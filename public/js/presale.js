@@ -31,30 +31,48 @@ function render() {
     : `${st.missing} ${st.missing === 1 ? 'pezzo mancante' : 'pezzi mancanti'} per raggiungere la soglia minima di produzione.`;
   $('price').textContent = eur(st.priceCents);
   $('total').textContent = eur(st.priceCents * qty);
-  if (!st.open) $('action').innerHTML = '<div class="closed">PRE-SALE CHIUSA</div>';
+  if ($('action').dataset.open !== String(st.open)) {
+    $('action').innerHTML = st.open
+      ? '<button class="pay" id="pay" type="submit">PRE-SALE</button>'
+      : '<div class="closed" role="status">PRE-SALE CHIUSA</div>';
+    $('action').dataset.open = String(st.open);
+  }
   $('tryon').hidden = !st.tryon;
   $('demo').hidden = !st.demo;
 }
 
 async function load() {
-  st = await (await fetch('/api/status')).json();
+  const response = await fetch('/api/status');
+  if (!response.ok) throw new Error('Impossibile caricare lo stato della PRE-SALE. Ricarica la pagina.');
+  st = await response.json();
   if (!$('sizes').children.length) {
     $('sizes').innerHTML = st.sizes.map((s, i) => `<input type="radio" name="size" id="s${i}" value="${s}"><label for="s${i}">${s}</label>`).join('');
   }
   render();
 }
-load();
-setInterval(() => load().catch(() => {}), 15000);
+load().catch((error) => { $('err').textContent = error.message; });
+setInterval(() => load().catch((error) => { $('err').textContent = error.message; }), 15000);
 
-$('minus').onclick = () => { qty = Math.max(1, qty - 1); $('qty').textContent = qty; render(); };
-$('plus').onclick = () => { qty = Math.min(st?.maxQty || 5, qty + 1); $('qty').textContent = qty; render(); };
+$('minus').onclick = () => {
+  qty = Math.max(1, qty - 1);
+  $('qty').textContent = qty;
+  if (st) render(); else $('total').textContent = eur(2500 * qty);
+};
+$('plus').onclick = () => {
+  qty = Math.min(st?.maxQty || 5, qty + 1);
+  $('qty').textContent = qty;
+  if (st) render(); else $('total').textContent = eur(2500 * qty);
+};
 
 if (new URLSearchParams(location.search).get('annullato')) $('err').textContent = 'Pagamento annullato. Puoi riprovare quando vuoi.';
 
 $('form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (!st?.open) return ($('err').textContent = 'La PRE-SALE è chiusa.');
   const size = document.querySelector('input[name=size]:checked')?.value;
   $('err').textContent = '';
+  if (!$('firstName').value.trim() || !$('lastName').value.trim()) return ($('err').textContent = 'Inserisci nome e cognome.');
+  if (!$('email').checkValidity()) return ($('err').textContent = 'Inserisci un indirizzo email valido.');
   if (!size) return ($('err').textContent = 'Scegli una taglia.');
   if (!$('terms').checked) return ($('err').textContent = 'Devi accettare le condizioni della PRE-SALE.');
   const btn = $('pay'); btn.disabled = true; btn.textContent = '...';
@@ -72,7 +90,7 @@ $('form').addEventListener('submit', async (e) => {
   } catch (err) {
     $('err').textContent = err.message;
     btn.disabled = false; btn.textContent = 'PRE-SALE';
-    load();
+    load().catch((loadError) => { $('err').textContent += ` ${loadError.message}`; });
   }
 });
 

@@ -50,11 +50,18 @@ La consegna avviene durante una serata Rush o tramite uno dei nostri PR di fiduc
 — Rush`
   });
 
-export const mailRefunded = (o) =>
+export const mailRefunded = (o, { reason = 'scadenza' } = {}) =>
   sendMail({
     to: o.email,
     subject: `RUSH PRE-SALE — ordine ${o.code} rimborsato`,
-    text: `Ciao ${o.first_name},
+    text: reason === 'manuale'
+      ? `Ciao ${o.first_name},
+
+abbiamo rimborsato ${eur(o.amount_cents)} per l'ordine ${o.code}.
+L'accredito arriva sul metodo di pagamento usato, di solito entro 5-10 giorni lavorativi.
+
+— Rush`
+      : `Ciao ${o.first_name},
 
 la produzione non è stata avviata entro i 2 mesi previsti: abbiamo rimborsato ${eur(o.amount_cents)} per l'ordine ${o.code}.
 L'accredito arriva sul metodo di pagamento usato, di solito entro 5-10 giorni lavorativi.

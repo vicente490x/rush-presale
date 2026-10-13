@@ -6,7 +6,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { config, SIZES } from './config.js';
+import { config, SIZES, validateRuntimeConfig } from './config.js';
 import { db, getSetting, setSetting, newOrderCode, publicStatus, totalPieces } from './db.js';
 import { makeToken, passwordOk, requireAdmin } from './auth.js';
 import { stripe, markPaid, refundOrder } from './payments.js';
@@ -59,7 +59,10 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
 app.use(express.json({ limit: '50kb' }));
 
 /* ---------- API pubblica ---------- */
-app.get('/api/status', (req, res) => res.json({ ...publicStatus(), sizes: SIZES, demo: config.demoMode }));
+app.get('/api/status', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ ...publicStatus(), sizes: SIZES, demo: config.demoMode });
+});
 
 const orderLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 15, standardHeaders: true, legacyHeaders: false });
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -74,7 +77,7 @@ app.post('/api/order', orderLimiter, async (req, res) => {
   const last = String(b.lastName || '').trim().slice(0, 60);
   const email = String(b.email || '').trim().toLowerCase().slice(0, 120);
   const size = String(b.size || '');
-  const qty = Math.floor(Number(b.quantity || 1));
+  const qty = Number(b.quantity ?? 1);
   if (!first || !last) return res.status(400).json({ error: 'Inserisci nome e cognome.' });
   if (!emailRe.test(email)) return res.status(400).json({ error: 'Email non valida.' });
   if (!SIZES.includes(size)) return res.status(400).json({ error: 'Scegli una taglia.' });
@@ -111,6 +114,28 @@ app.post('/api/order', orderLimiter, async (req, res) => {
         expires_at: Math.floor(Date.now() / 1000) + 30 * 60
       });
       db.prepare('UPDATE orders SET stripe_session_id=? WHERE id=?').run(session.id, id);
+      if (getSetting('presale_open') !== '1') {
+        try {
+          await stripe.checkout.sessions.expire(session.id);
+          db.prepare(`UPDATE orders SET payment_status='failed' WHERE id=? AND payment_status='pending'`).run(id);
+          return res.status(403).json({ error: 'La PRE-SALE è stata chiusa. Non è stato avviato alcun pagamento.' });
+        } catch (expireError) {
+          try {
+            const currentSession = await stripe.checkout.sessions.retrieve(session.id);
+            if (currentSession.status === 'complete' && currentSession.payment_status === 'paid') {
+              const paymentIntent = typeof currentSession.payment_intent === 'string'
+                ? currentSession.payment_intent
+                : currentSession.payment_intent?.id;
+              await markPaid(id, { sessionId: currentSession.id, paymentIntent });
+              return res.json({ url: `/conferma.html?code=${code}` });
+            }
+          } catch (retrieveError) {
+            console.error('checkout close race retrieval', retrieveError.message);
+          }
+          console.error('checkout close race', expireError.message);
+          return res.status(502).json({ error: 'La PRE-SALE è stata chiusa, ma non è stato possibile annullare il checkout. Contatta l’assistenza prima di riprovare.' });
+        }
+      }
       return res.json({ url: session.url });
     }
     if (config.demoMode) return res.json({ url: `/conferma.html?code=${code}&demo=1` });
@@ -122,7 +147,9 @@ app.post('/api/order', orderLimiter, async (req, res) => {
   }
 });
 
-app.get('/api/order/:code', (req, res) => {
+const orderStatusLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false });
+app.get('/api/order/:code', orderStatusLimiter, (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const o = db.prepare('SELECT * FROM orders WHERE code=?').get(String(req.params.code).toUpperCase());
   if (!o) return res.status(404).json({ error: 'non_trovato' });
   res.json({ code: o.code, firstName: o.first_name, size: o.size, quantity: o.quantity, amountCents: o.amount_cents, paymentStatus: o.payment_status, expiresAt: o.expires_at });
@@ -131,8 +158,10 @@ app.get('/api/order/:code', (req, res) => {
 // Pagamento simulato (solo DEMO_MODE senza Stripe)
 app.post('/api/demo/pay/:code', async (req, res) => {
   if (!config.demoMode) return res.status(404).end();
+  if (getSetting('presale_open') !== '1') return res.status(403).json({ error: 'PRE-SALE CHIUSA' });
   const o = db.prepare('SELECT * FROM orders WHERE code=?').get(String(req.params.code).toUpperCase());
   if (!o) return res.status(404).end();
+  if (o.payment_status !== 'pending') return res.status(409).json({ error: 'Ordine non più pagabile.' });
   await markPaid(o.id);
   res.json({ ok: true });
 });
@@ -193,17 +222,23 @@ const PROD_STATES = ['in_raccolta', 'soglia_raggiunta', 'produzione_avviata', 'p
 const DELIVERY = ['da_consegnare', 'serata_rush', 'tramite_pr', 'consegnata'];
 
 app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   const total = totalPieces();
   const paid = `payment_status='paid' AND refund_status NOT IN ('refunded')`;
   const bySize = Object.fromEntries(SIZES.map((s) => [s, 0]));
   db.prepare(`SELECT size, SUM(quantity) n FROM orders WHERE ${paid} GROUP BY size`).all().forEach((r) => (bySize[r.size] = r.n));
-  const ordersCount = db.prepare(`SELECT COUNT(*) n FROM orders WHERE ${paid}`).get().n;
+  const ordersCount = db.prepare('SELECT COUNT(*) n FROM orders').get().n;
   const revenue = db.prepare(`SELECT COALESCE(SUM(amount_cents),0) n FROM orders WHERE ${paid}`).get().n;
-  const soon = new Date(Date.now() + 14 * 864e5).toISOString();
-  const nearExpiry = db
-    .prepare(`SELECT COUNT(*) n FROM orders WHERE payment_status='paid' AND refund_status='none' AND expires_at <= ?`)
-    .get(soon).n;
-  const toRefund = db.prepare(`SELECT COUNT(*) n FROM orders WHERE payment_status='paid' AND refund_status IN ('failed') `).get().n;
+  const now = new Date().toISOString();
+  const soon = new Date(Date.now() + 7 * 864e5).toISOString();
+  const productionStarted = getSetting('production_status') === 'produzione_avviata' || getSetting('production_status') === 'produzione_completata';
+  const nearExpiry = productionStarted ? 0 : db
+    .prepare(`SELECT COUNT(*) n FROM orders WHERE payment_status='paid' AND refund_status='none' AND expires_at > ? AND expires_at <= ?`)
+    .get(now, soon).n;
+  const overdue = productionStarted
+    ? 0
+    : db.prepare(`SELECT COUNT(*) n FROM orders WHERE payment_status='paid' AND refund_status='none' AND expires_at <= ?`).get(now).n;
+  const refundFailures = db.prepare(`SELECT COUNT(*) n FROM orders WHERE payment_status='paid' AND refund_status='failed'`).get().n;
   res.json({
     total,
     threshold: config.threshold,
@@ -215,25 +250,75 @@ app.get('/api/admin/dashboard', requireAdmin, (req, res) => {
     production: getSetting('production_status'),
     thresholdReached: total >= config.threshold,
     nearExpiry,
-    toRefund,
+    toRefund: overdue + refundFailures,
     productionStates: PROD_STATES,
     deliveryStates: DELIVERY
   });
 });
 
 app.get('/api/admin/orders', requireAdmin, (req, res) => {
-  const rows = db.prepare(`SELECT * FROM orders WHERE payment_status IN ('paid') OR refund_status!='none' ORDER BY id DESC`).all();
+  res.setHeader('Cache-Control', 'no-store');
+  const rows = db.prepare('SELECT * FROM orders ORDER BY id DESC').all();
   res.json(rows);
 });
 
-app.post('/api/admin/presale', requireAdmin, (req, res) => {
-  setSetting('presale_open', req.body?.open ? '1' : '0');
+app.post('/api/admin/presale', requireAdmin, async (req, res) => {
+  const open = req.body?.open === true;
+  setSetting('presale_open', open ? '1' : '0');
+  if (!open) {
+    const pending = db.prepare(`SELECT id, stripe_session_id FROM orders WHERE payment_status='pending'`).all();
+    const errors = [];
+    for (const order of pending) {
+      if (!order.stripe_session_id || !stripe) {
+        db.prepare(`UPDATE orders SET payment_status='failed' WHERE id=? AND payment_status='pending'`).run(order.id);
+        continue;
+      }
+      try {
+        const session = await stripe.checkout.sessions.expire(order.stripe_session_id);
+        if (session.status === 'expired') {
+          db.prepare(`UPDATE orders SET payment_status='failed' WHERE id=? AND payment_status='pending'`).run(order.id);
+        }
+      } catch (expireError) {
+        try {
+          const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);
+          if (session.status === 'complete' && session.payment_status === 'paid') {
+            const paymentIntent = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
+            await markPaid(order.id, { sessionId: session.id, paymentIntent });
+            continue;
+          }
+          if (session.status === 'expired') {
+            db.prepare(`UPDATE orders SET payment_status='failed' WHERE id=? AND payment_status='pending'`).run(order.id);
+            continue;
+          }
+        } catch (retrieveError) {
+          console.error(`checkout status ${order.id}`, retrieveError.message);
+        }
+        console.error(`checkout expire ${order.id}`, expireError.message);
+        errors.push(order.id);
+      }
+    }
+    if (errors.length) {
+      return res.status(502).json({
+        error: `PRE-SALE chiusa, ma non è stato possibile annullare ${errors.length} checkout in sospeso. Verifica gli ordini ${errors.join(', ')} su Stripe.`
+      });
+    }
+  }
   res.json({ ok: true });
 });
 
 app.post('/api/admin/production', requireAdmin, (req, res) => {
   const s = req.body?.status;
   if (!PROD_STATES.includes(s)) return res.status(400).json({ error: 'stato non valido' });
+  const current = getSetting('production_status');
+  if (s === current) return res.json({ ok: true });
+  if (s === 'produzione_avviata') {
+    if (current === 'produzione_completata') return res.status(409).json({ error: 'La produzione risulta già completata.' });
+    if (totalPieces() < config.threshold) return res.status(409).json({ error: 'La produzione può essere avviata solo dopo il raggiungimento della soglia.' });
+  } else if (s === 'produzione_completata') {
+    if (current !== 'produzione_avviata') return res.status(409).json({ error: 'Imposta prima lo stato PRODUZIONE AVVIATA.' });
+  } else {
+    return res.status(409).json({ error: 'Gli stati di produzione non possono essere riportati indietro.' });
+  }
   setSetting('production_status', s);
   res.json({ ok: true });
 });
@@ -248,15 +333,20 @@ app.post('/api/admin/orders/:id/refund', requireAdmin, async (req, res) => {
   const o = db.prepare('SELECT * FROM orders WHERE id=?').get(req.params.id);
   if (!o || o.payment_status !== 'paid') return res.status(404).json({ error: 'ordine non trovato' });
   const ok = await refundOrder(o, { reason: 'manuale' });
-  res.json({ ok });
+  if (!ok) return res.status(502).json({ error: 'Rimborso non riuscito. Verifica l’errore e gestisci l’ordine manualmente su Stripe.' });
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
   const rows = db.prepare(`SELECT * FROM orders WHERE payment_status='paid' ORDER BY id`).all();
-  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const head = ['Ordine', 'Nome', 'Cognome', 'Email', 'Taglia', 'Quantita', 'Importo EUR', 'Pagato il', 'Scadenza', 'Rimborso', 'Consegna'];
+  res.setHeader('Cache-Control', 'no-store');
+  const esc = (v) => {
+    const value = String(v ?? '').replace(/[\r\n]/g, ' ');
+    return `"${/^[\s]*[=+\-@]/.test(value) ? `'${value}` : value.replace(/"/g, '""')}"`;
+  };
+  const head = ['Ordine', 'Nome', 'Cognome', 'Email', 'Taglia', 'Quantita', 'Importo EUR', 'Pagato il', 'Scadenza', 'Pagamento', 'Produzione', 'Rimborso', 'Consegna'];
   const lines = rows.map((o) =>
-    [o.code, o.first_name, o.last_name, o.email, o.size, o.quantity, (o.amount_cents / 100).toFixed(2).replace('.', ','), o.paid_at, o.expires_at, o.refund_status, o.delivery_status].map(esc).join(';')
+    [o.code, o.first_name, o.last_name, o.email, o.size, o.quantity, (o.amount_cents / 100).toFixed(2).replace('.', ','), o.paid_at, o.expires_at, o.payment_status, getSetting('production_status'), o.refund_status, o.delivery_status].map(esc).join(';')
   );
   const sizes = db
     .prepare(`SELECT size, SUM(quantity) n FROM orders WHERE payment_status='paid' AND refund_status!='refunded' GROUP BY size`)
@@ -271,7 +361,11 @@ app.get('/api/admin/export.csv', requireAdmin, (req, res) => {
 app.use('/assets', express.static(path.join(__dirname, '../assets')));
 app.use(express.static(path.join(__dirname, '../public'), { extensions: ['html'], maxAge: config.isProd ? '1h' : 0 }));
 
+validateRuntimeConfig();
 app.listen(config.port, () => {
+  if (!config.isProd && config.adminPassword === 'admin') {
+    console.warn('Sicurezza: cambia ADMIN_PASSWORD prima di esporre il sito su Internet.');
+  }
   console.log(`Rush PRE-SALE su ${config.baseUrl}  (${config.demoMode ? 'DEMO: pagamenti simulati' : stripe ? 'Stripe attivo' : 'pagamenti NON configurati'})`);
   startJobs();
 });

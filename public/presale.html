@@ -50,7 +50,7 @@
     </div>
 
     <section class="counter" id="counter" aria-live="polite">
-      <div class="num"><span id="n">0</span> / <span id="th">15</span><small>PEZZI PRENOTATI</small></div>
+      <div class="num"><span id="n">0</span> / <span id="th">15</span> <small>PEZZI PRENOTATI</small></div>
       <div class="track"><div class="fill" id="fill"></div></div>
       <p id="cmsg"></p>
     </section>
@@ -67,10 +67,10 @@
       </div>
 
       <div class="field two">
-        <input class="inp" id="firstName" placeholder="Nome" autocomplete="given-name" required>
-        <input class="inp" id="lastName" placeholder="Cognome" autocomplete="family-name" required>
+        <input class="inp" id="firstName" aria-label="Nome" placeholder="Nome" autocomplete="given-name" maxlength="60" required>
+        <input class="inp" id="lastName" aria-label="Cognome" placeholder="Cognome" autocomplete="family-name" maxlength="60" required>
       </div>
-      <div class="field" style="margin-top:10px"><input class="inp" id="email" type="email" inputmode="email" placeholder="Email" autocomplete="email" required></div>
+      <div class="field" style="margin-top:10px"><input class="inp" id="email" aria-label="Email" type="email" inputmode="email" placeholder="Email" autocomplete="email" maxlength="120" required></div>
       <input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">
 
       <section class="terms">
@@ -83,7 +83,7 @@
       </section>
 
       <div class="total"><span>Totale</span><b id="total">25€</b></div>
-      <div id="action"><button class="pay" id="pay" type="submit">PRE-SALE</button></div>
+      <div id="action" data-open="true"><button class="pay" id="pay" type="submit">PRE-SALE</button></div>
       <p class="err" id="err" role="alert"></p>
       <p class="notice" id="demo" hidden>Modalità demo: nessun pagamento reale verrà effettuato.</p>
     </form>
@@ -116,4 +116,3 @@
   <script src="/js/presale.js" type="module"></script>
 </body>
 </html>
-

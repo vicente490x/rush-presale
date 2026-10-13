@@ -42,5 +42,5 @@ export function backupDb() {
 export function startJobs() {
   cron.schedule('0 * * * *', () => runExpiryJob().catch((e) => console.error('expiry job', e)));
   cron.schedule('30 3 * * *', () => backupDb().catch((e) => console.error('backup', e)));
-  runExpiryJob().catch(() => {});
+  runExpiryJob().catch((e) => console.error('initial expiry job', e));
 }

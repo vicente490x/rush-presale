@@ -1,8 +1,18 @@
 const meta = document.getElementById('meta');
-fetch('/api/status').then(r => r.json()).then(s => {
-  if (!s.open) { document.querySelector('.cta').textContent = 'PRE-SALE CHIUSA'; meta.textContent = ''; return; }
-  meta.innerHTML = `<b>${s.total} / ${s.threshold}</b> pezzi prenotati`;
-}).catch(() => {});
+const cta = document.querySelector('.cta');
+fetch('/api/status')
+  .then((r) => {
+    if (!r.ok) throw new Error('Impossibile leggere lo stato della PRE-SALE.');
+    return r.json();
+  })
+  .then((s) => {
+    cta.textContent = s.open ? 'PRE-SALE' : 'PRE-SALE CHIUSA';
+    cta.setAttribute('aria-label', s.open ? 'Vai alla pagina PRE-SALE' : 'PRE-SALE chiusa: consulta lo stato degli ordini');
+    meta.textContent = `${s.total} / ${s.threshold} pezzi prenotati${s.thresholdReached ? ' — SOGLIA RAGGIUNTA' : ''}`;
+  })
+  .catch(() => {
+    meta.textContent = 'Contatore PRE-SALE temporaneamente non disponibile.';
+  });
 
 const c = document.getElementById('embers');
 const ctx = c.getContext('2d');
@@ -23,7 +33,10 @@ const mk = (init) => ({
   hue: Math.random() < .25 ? 22 : 0
 });
 size(); addEventListener('resize', size);
-parts = Array.from({ length: reduce ? 0 : 70 }, () => mk(true));
+if (reduce) {
+  c.hidden = true;
+} else {
+  parts = Array.from({ length: 70 }, () => mk(true));
 (function loop() {
   ctx.clearRect(0, 0, W, H);
   for (const p of parts) {
@@ -36,3 +49,4 @@ parts = Array.from({ length: reduce ? 0 : 70 }, () => mk(true));
   }
   requestAnimationFrame(loop);
 })();
+}
