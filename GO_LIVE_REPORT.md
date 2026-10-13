@@ -27,6 +27,7 @@ Commit di backup iniziale: `70253e6` (`chore: backup pre go-live`)
 - `npm run lint`: completato senza errori.
 - `npm test`: 7 test superati.
 - `npm run build` con `APP_ENV=production` e valori fittizi per la sola build: completata.
+- Build ripetuta dopo un errore su `/robots.txt`: la prima esecuzione ha usato l'URL HTTP locale da `.env.local` e ha rifiutato correttamente HTTPS mancante; la build e' passata con URL HTTPS segnaposto e valori fittizi impostati solo nel processo, senza modificare `.env.local`.
 - Avvio in produzione con configurazione obbligatoria mancante: rifiutato correttamente.
 - Smoke HTTP: home, PRE-SALE, pagine legali e login admin hanno risposto 200; admin non autenticato rediretto al login; API admin e cron senza credenziali hanno risposto 401; endpoint di test/debug non presenti hanno risposto 404.
 - Verificati header di sicurezza (CSP, HSTS, nosniff, anti-framing, referrer policy) e regole robots.
