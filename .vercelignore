@@ -1,0 +1,14 @@
+.env*
+!.env.production.example
+tests/
+coverage/
+*.test.ts
+TEST_REPORT.md
+CLEANUP_PLAN.md
+PROMPT.md
+SPEC.md
+AUDIT.md
+README.md
+.vscode/
+prisma/dev.db
+data/backups/

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { removeExpiredAssets } from '@/lib/storage';
+import { logError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     const removed = await removeExpiredAssets();
     return NextResponse.json({ removed });
   } catch (error) {
-    console.error('Pulizia asset try-on non riuscita', error);
+    logError('cron.asset_cleanup.failed', error);
     return NextResponse.json({ error: 'Pulizia immagini temporanee non riuscita.' }, { status: 500 });
   }
 }

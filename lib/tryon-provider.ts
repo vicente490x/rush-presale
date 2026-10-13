@@ -1,4 +1,5 @@
 import { fal } from '@fal-ai/client';
+import { appEnv } from '@/lib/config';
 
 export interface TryOnProvider {
   generate(modelImage: string, garmentImage: string): Promise<{ imageUrl: string; attempts: number }>;
@@ -43,7 +44,7 @@ export class FalFashnProvider implements TryOnProvider {
 }
 
 export function createTryOnProvider() {
-  if (process.env.TRYON_PROVIDER_MODE === 'mock') return new MockTryOnProvider();
+  if (process.env.TRYON_PROVIDER_MODE === 'mock' && appEnv !== 'production') return new MockTryOnProvider();
   if (!process.env.FAL_KEY) throw new Error('Provider try-on non configurato.');
   return new FalFashnProvider(process.env.FAL_KEY, process.env.TRYON_MODEL_ID ?? 'fal-ai/fashn/tryon');
 }

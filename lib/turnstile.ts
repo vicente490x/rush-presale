@@ -1,5 +1,8 @@
+import { appEnv } from '@/lib/config';
+
 export async function verifyTurnstile(token: unknown, remoteIp?: string) {
-  if (process.env.TURNSTILE_MODE === 'test' || !process.env.TURNSTILE_SECRET_KEY) return true;
+  if (appEnv !== 'production' && (process.env.TURNSTILE_MODE === 'test' || !process.env.TURNSTILE_SECRET_KEY)) return true;
+  if (!process.env.TURNSTILE_SECRET_KEY) throw new Error('TURNSTILE_SECRET_KEY non configurata.');
   if (typeof token !== 'string' || !token) return false;
   const body = new URLSearchParams({
     secret: process.env.TURNSTILE_SECRET_KEY,

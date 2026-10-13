@@ -5,6 +5,7 @@ import { orderConfirmationText } from '@/lib/mail';
 import { prisma } from '@/lib/prisma';
 import { paidPieces } from '@/lib/settings';
 import { stripeClient } from '@/lib/stripe';
+import { logError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +14,7 @@ async function enqueueThresholdNotification() {
     const settings = await tx.settings.findUnique({ where: { id: 'global' } });
     if (!settings || settings.thresholdNotifiedAt || !process.env.ADMIN_EMAIL) return;
     const pieces = await tx.order.aggregate({
-      where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' } },
+      where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' }, isTest: false },
       _sum: { quantity: true }
     });
     const total = pieces._sum.quantity ?? 0;
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     const raw = Buffer.from(await request.arrayBuffer());
     event = stripeClient().webhooks.constructEvent(raw, signature, secret);
   } catch (error) {
-    console.error('Firma webhook Stripe non valida', error);
+    logError('stripe.webhook.signature.invalid', error);
     return NextResponse.json({ error: 'Firma webhook non valida.' }, { status: 400 });
   }
 
@@ -102,6 +103,37 @@ export async function POST(request: Request) {
             data: { paymentStatus: 'FAILED' }
           });
         }
+      } else if (event.type === 'payment_intent.payment_failed') {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const orderId = intent.metadata?.orderId;
+        if (orderId) {
+          await tx.order.updateMany({
+            where: { id: orderId, paymentStatus: 'PENDING' },
+            data: { paymentStatus: 'FAILED', stripePaymentIntentId: intent.id }
+          });
+        }
+      } else if (event.type === 'charge.refunded') {
+        const charge = event.data.object as Stripe.Charge;
+        const intentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+        if (intentId && charge.amount_refunded >= charge.amount) {
+          const order = await tx.order.findFirst({ where: { stripePaymentIntentId: intentId } });
+          if (order && order.refundStatus !== 'REFUNDED') {
+            await tx.order.update({
+              where: { id: order.id },
+              data: { refundStatus: 'REFUNDED', orderStatus: 'REFUNDED', refundedAt: new Date(event.created * 1000) }
+            });
+            await tx.emailOutbox.upsert({
+              where: { dedupeKey: `stripe-refund:${order.id}` },
+              create: {
+                dedupeKey: `stripe-refund:${order.id}`,
+                to: order.email,
+                subject: `RUSH PRE-SALE — ordine ${order.orderNumber} rimborsato`,
+                text: `Ciao ${order.firstName},\n\nStripe ha confermato il rimborso dell’ordine ${order.orderNumber}. L’accredito arriva sul metodo di pagamento utilizzato, di solito entro 5-10 giorni lavorativi.\n\n— RUSH`
+              },
+              update: {}
+            });
+          }
+        }
       }
     });
 
@@ -109,7 +141,7 @@ export async function POST(request: Request) {
     await enqueueThresholdNotification();
     return NextResponse.json({ received: true, pieces: await paidPieces() });
   } catch (error) {
-    console.error(`Elaborazione webhook ${event.id} non riuscita`, error);
+    logError('stripe.webhook.process.failed', error);
     return NextResponse.json({ error: 'Elaborazione webhook non riuscita.' }, { status: 500 });
   }
 }

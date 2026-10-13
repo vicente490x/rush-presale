@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { stripeClient } from '@/lib/stripe';
+import { logError } from '@/lib/logger';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 const schema = z.object({ open: z.boolean() });
 
 export async function POST(request: Request) {
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Autenticazione richiesta.' }, { status: 401 });
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: 'Stato PRE-SALE non valido.' }, { status: 400 });
   try {
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
         }
       } catch (error) {
         failed.push(order.id);
-        console.error(`Annullamento checkout ${order.id} non riuscito`, error);
+        logError('admin.presale.checkout.cancel.failed', error);
       }
     }
     if (failed.length) {
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Aggiornamento apertura PRE-SALE non riuscito', error);
+    logError('admin.presale.update.failed', error);
     return NextResponse.json({ error: 'Impossibile aggiornare lo stato PRE-SALE.' }, { status: 503 });
   }
 }

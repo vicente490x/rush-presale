@@ -15,9 +15,9 @@
     "db:migrate": "prisma migrate deploy",
     "db:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:reset": "tsx prisma/seed.ts --reset",
-    "seed": "tsx prisma/seed.ts",
-    "admin:setup": "tsx scripts/setup-local-admin.ts"
+    "create-admin": "tsx scripts/create-admin.ts",
+    "db:clean-test-data": "tsx scripts/db-clean-test-data.ts",
+    "db:check-production": "tsx scripts/db-check-production.ts"
   },
   "dependencies": {
     "@fal-ai/client": "^1.6.2",
@@ -46,5 +46,11 @@
     "prisma": "^6.12.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
+  },
+  "allowScripts": {
+    "@prisma/client@6.12.0": true,
+    "@prisma/engines@6.12.0": true,
+    "esbuild@0.28.2": true,
+    "prisma@6.12.0": true
   }
 }

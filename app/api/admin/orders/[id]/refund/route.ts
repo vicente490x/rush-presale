@@ -3,10 +3,13 @@ import { RefundStatus, PaymentStatus, OrderStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { stripeClient } from '@/lib/stripe';
 import { enqueueEmail } from '@/lib/mail';
+import { logError } from '@/lib/logger';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 export const runtime = 'nodejs';
 
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!await isAdminRequest(_request)) return NextResponse.json({ error: 'Autenticazione richiesta.' }, { status: 401 });
   const { id } = await context.params;
   const order = await prisma.order.findUnique({ where: { id } });
   if (!order || order.paymentStatus !== PaymentStatus.PAID || !order.stripePaymentIntentId) {
@@ -35,7 +38,7 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ ok: true });
   } catch (error) {
     await prisma.order.update({ where: { id }, data: { refundStatus: RefundStatus.FAILED } });
-    console.error(`Rimborso ${order.orderNumber} non riuscito`, error);
+    logError('admin.refund.failed', error);
     return NextResponse.json({ error: 'Rimborso non riuscito. Controlla Stripe e riprova.' }, { status: 502 });
   }
 }

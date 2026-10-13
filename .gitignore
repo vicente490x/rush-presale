@@ -4,8 +4,12 @@ out/
 coverage/
 .vercel/
 .env
+.env.test
+.env.*.test
 .env.local
 .env.*.local
+.env.production
+prisma/*.db*
 data/*.db*
 data/backups/
 *.tsbuildinfo

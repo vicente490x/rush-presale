@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ClothingSize } from '@prisma/client';
 import { publicConfig } from '@/lib/config';
 import { paidPieces, settings } from '@/lib/settings';
+import { logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function GET() {
       tryOn: current.tryOnEnabled && Boolean(process.env.FAL_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    console.error('Lettura stato PRE-SALE non riuscita', error);
+    logError('presale.status.unavailable', error);
     return NextResponse.json({ error: 'Stato PRE-SALE non disponibile.' }, { status: 503 });
   }
 }

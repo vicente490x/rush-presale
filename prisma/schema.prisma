@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider  = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum ClothingSize {
@@ -84,6 +85,7 @@ model Order {
   confirmationSentAt    DateTime?
   expiryWarningSentAt   DateTime?
   deliveryStatus        DeliveryStatus @default(DA_CONSEGNARE)
+  isTest                Boolean        @default(false)
   termsAcceptedAt       DateTime
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
@@ -96,13 +98,13 @@ model Order {
 model Settings {
   id                   String           @id @default("global")
   threshold            Int              @default(15)
-  presaleOpen          Boolean          @default(true)
+  presaleOpen          Boolean          @default(false)
   productionStatus     ProductionStatus @default(IN_RACCOLTA)
   thresholdNotifiedAt  DateTime?
   tryOnEnabled         Boolean          @default(false)
   tryOnDailyLimit      Int              @default(50)
   tryOnDailyCount      Int              @default(0)
-  tryOnDailySpendUsd   Float            @default(0)
+  tryOnDailySpendUsd   Decimal          @default(0) @db.Decimal(10, 4)
   tryOnSpendResetAt    DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
 }
@@ -113,7 +115,8 @@ model TryOnJob {
   createdAt    DateTime    @default(now())
   durationMs   Int?
   provider     String
-  costEstimate Float       @default(0)
+  costEstimate Decimal     @default(0) @db.Decimal(10, 4)
+  isTest       Boolean     @default(false)
 
   @@index([createdAt, status])
 }

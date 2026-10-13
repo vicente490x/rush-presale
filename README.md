@@ -1,79 +1,72 @@
-# RUSH — PRE-SALE
+# RUSH PRE-SALE
 
-Storefront Next.js per la PRE-SALE RUSH. Prezzo: 25 € a maglietta; la produzione può essere avviata al raggiungimento della soglia configurata. I pagamenti sono gestiti da Stripe Checkout e gli ordini vengono confermati esclusivamente dal webhook Stripe verificato.
+Storefront Next.js con ordini tramite Stripe Checkout, database PostgreSQL, email Resend e area admin. Il sito applica una soglia di produzione di 15 pezzi e parte con la PRE-SALE chiusa.
 
-## Requisiti
+## Requisiti e sviluppo locale
 
-- Node.js 22 o 24 (vedi `.nvmrc`).
-- PostgreSQL accessibile tramite `DATABASE_URL` e `DIRECT_URL`.
-- Credenziali Stripe, Resend e Upstash Redis per i flussi di vendita e le email.
-- Supabase Storage e fal.ai sono necessari solo se si attiva la prova virtuale.
+- Node.js 22 o 24.
+- PostgreSQL. Il file `prisma/dev.db` è un residuo locale e non viene usato dall'app.
+- Copia `.env.example` in `.env.local` e configura un database **di sviluppo** separato.
+- Applica le migrazioni con `npm run db:migrate` e genera Prisma Client con `npm run db:generate`.
+- Avvia `npm run dev`.
 
-## Avvio locale
+Per creare un admin, esporta `ADMIN_EMAIL` e `ADMIN_PASSWORD` nel terminale insieme alle variabili di connessione, quindi esegui `npm run create-admin`. La password deve avere almeno 12 caratteri e non può essere `admin`; viene memorizzata con bcrypt. Non usare `npm run create-admin` con un database condiviso o non destinato all'ambiente selezionato.
 
-```powershell
-npm install
-.\scripts\setup-local-postgres.ps1
-```
+I provider mock e i bypass anti-bot sono disponibili soltanto fuori da `APP_ENV=production`. I test restano nella cartella `tests/`; `npm test` li esegue in ambiente di sviluppo/test.
 
-Lo script individua PostgreSQL installato in `Program Files`, richiede la password amministrativa senza mostrarla, crea un database e un utente locali dedicati, scrive la connessione in `.env.local` (ignorato da Git) e applica le migrazioni. Non legge, modifica o cancella il precedente database SQLite. In locale `NEXT_PUBLIC_SITE_URL` può essere `http://localhost:3000`; in produzione deve usare HTTPS.
-
-Se Next.js è già in esecuzione, arrestalo con `Ctrl+C` nel terminale che lo ospita e riavvialo:
+## Comandi database
 
 ```powershell
-npm run dev
+npm run db:migrate
+npm run db:generate
+npm run db:clean-test-data
+npm run db:check-production
 ```
 
-- Storefront: http://localhost:3000
-- PRE-SALE: http://localhost:3000/presale
-- Admin: http://localhost:3000/admin/login
+`db:clean-test-data` è dry-run per impostazione predefinita. La modalità effettiva richiede `--confirm` e `CONFIRM_DB_NAME` uguale al database stampato. Si arresta se trova ordini che sembrano reali, esporta prima i record di test e imposta la PRE-SALE chiusa. `--open-presale` lascia la PRE-SALE aperta dopo la pulizia.
 
-Configura l’accesso admin locale (la password viene digitata senza echo; password hash e chiave di sessione vengono salvate in `.env.local`):
+In produzione esegui esclusivamente `npx prisma migrate deploy` per applicare le migrazioni. Non usare `prisma migrate reset`, `prisma db push` o seed nel database di produzione.
 
-```powershell
-npm run admin:setup
-```
+## Deploy Vercel e database PostgreSQL
 
-Per l’accesso da `localhost` in modalità sviluppo, il form admin non richiede Turnstile né Upstash. Questo bypass non è attivo in produzione o su hostname diversi da localhost.
+In Vercel crea un database PostgreSQL di produzione separato da quello locale e da Preview. Dal Marketplace Vercel installa Neon, assegna un nome riconoscibile come `rush-presale-prod` e scegli una regione vicina alle funzioni. Collega il database solo all'ambiente Production. Usa l'URL pooled per `DATABASE_URL` e quello diretto per `DIRECT_URL`; Vercel/Neon forniscono entrambi i valori dopo il provisioning. La [guida Marketplace Vercel](https://vercel.com/docs/marketplace-storage) descrive provisioning e collegamento delle variabili.
 
-## Configurazione servizi
+In Vercel apri **Project Settings → Environment Variables** e inserisci per l'ambiente **Production** i nomi in `.env.production.example`. Crea segreti casuali per `CRON_SECRET` e `SESSION_SECRET` (almeno 32 caratteri). Imposta `ADMIN_PASSWORD` solo per la sessione in cui esegui `create-admin`, poi rimuovilo dalle variabili di produzione. Non salvare chiavi o password nel repository.
 
-| Variabili | Servizio / uso |
-| --- | --- |
-| `DATABASE_URL`, `DIRECT_URL` | PostgreSQL e migrazioni Prisma |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe Checkout e webhook firmati; usa `sk_test_` finché i pagamenti live non sono autorizzati |
-| `ALLOW_LIVE_PAYMENTS` | Deve rimanere `false` fino ad autorizzazione esplicita dei pagamenti reali |
-| `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` | Outbox e invio email |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limit distribuito |
-| `ADMIN_PASSWORD_HASH`, `SESSION_SECRET` | Accesso amministratore |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Protezione anti-bot dei moduli |
-| `CRON_SECRET` | Autenticazione dei cron job |
-| `FAL_KEY`, `TRYON_MODEL_ID` | Provider commerciale della prova virtuale |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TRYON_BUCKET` | Storage privato temporaneo per le foto della prova virtuale |
-| `TRYON_COST_ESTIMATE_USD`, `TRYON_MAX_DAILY_SPEND_USD`, `TRYON_DAILY_LIMIT` | Stima e limiti di spesa della prova virtuale |
+La build non esegue seed né reset: `npm run build` genera Prisma Client e compila Next.js. Dopo aver impostato le variabili Production, applica le migrazioni con `npx prisma migrate deploy`, crea l'admin con `npm run create-admin` e rimuovi `ADMIN_PASSWORD` dall'ambiente prima del deploy pubblico. Per Preview configura un database separato e `APP_ENV=preview`, con chiavi Stripe test.
 
-La prova virtuale resta disabilitata finché non viene attivata dal pannello admin. Prima di abilitarla, verifica licenza, prezzo, conservazione e uso delle immagini con fal.ai/FASHN e aggiorna l’informativa privacy: il costo configurato è solo una stima, non una tariffa garantita.
+`vercel.json` programma `/api/cron/daily` alle 07:00 UTC e `/api/cron/cleanup` ogni cinque minuti. Impostando `CRON_SECRET` nel progetto Vercel, Vercel lo invia automaticamente come `Authorization: Bearer …`; le route confrontano il valore in tempo costante. La frequenza di cinque minuti richiede un piano Vercel che la supporti. Vedi [sicurezza dei cron Vercel](https://vercel.com/docs/cron-jobs/manage-cron-jobs).
 
 ## Stripe
 
-Configura nel Dashboard Stripe il webhook `https://TUODOMINIO/api/stripe/webhook` per `checkout.session.completed` e `checkout.session.expired`, quindi copia il relativo secret in `STRIPE_WEBHOOK_SECRET`. Un ordine diventa pagato esclusivamente dopo la verifica della firma e dell’evento Stripe.
+Registra in Stripe un endpoint webhook live a `https://<dominio-produzione>/api/stripe/webhook` e abilita questi eventi. La [documentazione Stripe sugli endpoint webhook](https://docs.stripe.com/api/webhook_endpoints/create) descrive configurazione e signing secret.
 
-## Verifiche e produzione
+- `checkout.session.completed`
+- `checkout.session.expired`
+- `payment_intent.payment_failed`
+- `charge.refunded`
+
+Copia il signing secret `whsec_…` mostrato nei dettagli di quell'endpoint e impostalo come `STRIPE_WEBHOOK_SECRET` in Vercel Production. La chiave `STRIPE_SECRET_KEY` di produzione deve iniziare con `sk_live_`. Gli ordini diventano pagati soltanto dopo la verifica della firma del webhook.
+
+## Sicurezza e dati
+
+- Gli header applicativi includono CSP, HSTS, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff` e `Referrer-Policy`.
+- Il cookie admin usa `httpOnly`, `secure` in deploy HTTPS e `sameSite=strict`; le pagine `/admin` e `/admin/login` chiedono autenticazione e dichiarano `noindex`.
+- `app/robots.ts` impedisce l'indicizzazione di `/admin`, delle API admin e dei cron. `robots.txt` non sostituisce l'autenticazione.
+- Login e checkout richiedono rate limiting Upstash in produzione; se Redis manca, la funzione fallisce senza passare al limite solo in memoria.
+- Vercel forza HTTPS per il dominio. Configura il dominio personalizzato e verifica il certificato prima di attivare vendite live.
+- Le pagine legali devono essere riviste per i dati reali dell'attività, i cookie, le condizioni di vendita e il trattamento delle fotografie inviate alla prova AI.
+
+## Backup del database
+
+Abilita nel provider PostgreSQL la conservazione automatica e il ripristino point-in-time secondo il piano scelto. Se usi Neon, configura e verifica la frequenza delle snapshot automatiche nel progetto: la [configurazione della pianificazione snapshot](https://api-docs.neon.tech/reference/setsnapshotschedule) richiede un piano che supporti questa funzione. Controlla la retention disponibile e prova il ripristino su un branch/database non di produzione. In aggiunta, pianifica un export PostgreSQL cifrato giornaliero (`pg_dump` in formato custom) verso uno storage esterno con accesso ristretto e retention, conserva una copia separata per una finestra concordata ed esegui periodicamente una prova di restore. Non salvare dump nel repository o nell'artefatto Vercel.
+
+## Verifiche
 
 ```powershell
 npm run lint
 npm test
-npm run build
+$env:APP_ENV = 'production'; npm run build
 ```
 
-Usa un hosting Node compatibile con Next.js e con cron pianificati. `vercel.json` esegue il job amministrativo giornaliero e la pulizia degli asset temporanei ogni cinque minuti; verifica che il piano del provider supporti la frequenza richiesta e configura `CRON_SECRET`. Imposta tutte le variabili d’ambiente nell’hosting, non nel repository.
-
-Le pagine legali contengono ancora campi da completare (ragione sociale, sede, contatti e dettagli verificati sui provider). Devono essere revisionate e completate prima della vendita reale. Non attivare i pagamenti live o la prova AI prima della revisione operativa, contrattuale e legale.
-
-## Logica PRE-SALE
-
-- Il contatore considera i pezzi pagati non rimborsati.
-- Al raggiungimento della soglia viene accodata una notifica admin; la PRE-SALE resta aperta.
-- Chiusura, stati produzione, gestione consegne e rimborsi sono disponibili nell’area admin.
-- Ogni ordine pagato scade due mesi di calendario dopo il pagamento. Se la produzione non è stata avviata, il job pianificato tenta il rimborso Stripe e accoda le notifiche.
-- Foto e risultati della prova AI non sono collegati agli ordini. La foto sorgente viene rimossa dallo storage del sito dopo l’elaborazione o dal job di pulizia alla scadenza.
+La build di produzione richiede variabili d'ambiente sintatticamente valide, ma non contatta Stripe o i provider. `instrumentation.ts` rifiuta di avviare il server quando le variabili di produzione richieste mancano o la chiave Stripe non è live.

@@ -17,6 +17,7 @@ export function AdminLogin() {
   useEffect(() => {
     setLocalDevelopment(
       process.env.NODE_ENV !== 'production' &&
+      !process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY &&
       ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
     );
   }, []);

@@ -1,6 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { createHash } from 'node:crypto';
+import { appEnv } from '@/lib/config';
 
 let redis: Redis | undefined;
 const limiters = new Map<string, Ratelimit>();
@@ -23,6 +24,7 @@ export async function enforceRateLimit(ip: string, namespace: string, limit: num
   const subject = createHash('sha256').update(ip).digest('hex');
   const canUseRedis = Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) && process.env.RATE_LIMIT_MODE !== 'memory';
   if (!canUseRedis) {
+    if (appEnv === 'production') throw new Error('Rate limiting di produzione non configurato: imposta Upstash Redis.');
     const key = `${namespace}:${subject}`;
     const now = Date.now();
     const current = memoryLimiters.get(key);

@@ -19,7 +19,7 @@ export function hasProductionStarted(status: ProductionStatus) {
 
 export async function paidPieces() {
   const result = await prisma.order.aggregate({
-    where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' } },
+    where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' }, isTest: false },
     _sum: { quantity: true }
   });
   return result._sum.quantity ?? 0;

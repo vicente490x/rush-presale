@@ -1,12 +1,15 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
+import { appEnv } from '@/lib/config';
+import { logError, logInfo } from '@/lib/logger';
 
 let resend: Resend | undefined;
 
 function client() {
-  if (process.env.MAIL_PROVIDER === 'console' || !process.env.RESEND_API_KEY) {
+  if (appEnv !== 'production' && (process.env.MAIL_PROVIDER === 'console' || !process.env.RESEND_API_KEY)) {
     return undefined;
   }
+  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY non configurata.');
   resend ??= new Resend(process.env.RESEND_API_KEY);
   return resend;
 }
@@ -40,7 +43,7 @@ export async function deliverPendingEmails(batchSize = 25) {
           where: { id: message.id },
           data: { sentAt: new Date(), attempts: { increment: 1 }, lastError: null }
         });
-        console.log('[MAIL MOCK]', message.subject, '->', message.to, '\n', message.text);
+        logInfo('email.mock.skipped');
         delivered++;
         continue;
       }
@@ -64,7 +67,7 @@ export async function deliverPendingEmails(batchSize = 25) {
           lastError: error instanceof Error ? error.message.slice(0, 500) : 'Errore invio email'
         }
       });
-      console.error(`Email outbox ${message.id} non inviata`, error);
+      logError('email.delivery.failed', error);
     }
   }
   return delivered;

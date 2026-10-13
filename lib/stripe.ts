@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { appEnv } from '@/lib/config';
 
 function createMockStripeClient() {
   const id = () => `mock_${Math.random().toString(36).slice(2, 10)}`;
@@ -39,14 +40,17 @@ function createMockStripeClient() {
 let client: Stripe | undefined;
 
 export function stripeClient() {
-  if (process.env.STRIPE_MOCK === 'true') {
+  if (process.env.STRIPE_MOCK === 'true' && appEnv !== 'production') {
     client ??= createMockStripeClient();
     return client;
   }
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('Stripe non configurato: imposta le chiavi Stripe test.');
-  if (!key.startsWith('sk_test_') && process.env.ALLOW_LIVE_PAYMENTS !== 'true') {
-    throw new Error('Il checkout è limitato alle chiavi Stripe test.');
+  if (!key) throw new Error('Stripe non configurato: imposta STRIPE_SECRET_KEY.');
+  if (appEnv === 'production' && !key.startsWith('sk_live_')) {
+    throw new Error('APP_ENV=production richiede una chiave Stripe live che inizi con sk_live_.');
+  }
+  if (appEnv !== 'production' && !key.startsWith('sk_test_')) {
+    throw new Error('Usa una chiave Stripe test al di fuori della produzione.');
   }
   client ??= new Stripe(key);
   return client;

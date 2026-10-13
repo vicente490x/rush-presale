@@ -6,6 +6,7 @@ import { stripeClient } from '@/lib/stripe';
 import { deliverPendingEmails, enqueueEmail } from '@/lib/mail';
 import { hasProductionStarted, settings } from '@/lib/settings';
 import { removeExpiredAssets } from '@/lib/storage';
+import { logError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -108,7 +109,7 @@ export async function GET(request: Request) {
           stats.refunds++;
         } catch (error) {
           await prisma.order.update({ where: { id: order.id }, data: { refundStatus: RefundStatus.FAILED } });
-          console.error(`Rimborso automatico ${order.orderNumber} non riuscito`, error);
+          logError('cron.refund.failed', error);
           stats.refundErrors++;
         }
       }
@@ -124,7 +125,7 @@ export async function GET(request: Request) {
     stats.emailsDelivered = await deliverPendingEmails();
     return NextResponse.json(stats);
   } catch (error) {
-    console.error('Cron giornaliero non completato', error);
+    logError('cron.daily.failed', error);
     return NextResponse.json({ error: 'Attività pianificate non completate.', stats }, { status: 500 });
   }
 }

@@ -8,6 +8,7 @@ import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { uploadTemporaryAsset, deleteTemporaryAsset } from '@/lib/storage';
 import { createTryOnProvider } from '@/lib/tryon-provider';
+import { logError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -136,7 +137,12 @@ export async function POST(request: Request) {
       });
       if (locked.count !== 1) throw new Error('È stato raggiunto il limite giornaliero di prove virtuali o di spesa.');
       return tx.tryOnJob.create({
-        data: { status: 'PROCESSING', provider: process.env.TRYON_MODEL_ID ?? 'fal-ai/fashn/tryon', costEstimate: reservedCost }
+        data: {
+          status: 'PROCESSING',
+          provider: process.env.TRYON_MODEL_ID ?? 'fal-ai/fashn/tryon',
+          costEstimate: reservedCost,
+          isTest: process.env.APP_ENV !== 'production' && process.env.TRYON_PROVIDER_MODE === 'mock'
+        }
       });
     });
     jobId = job.id;
@@ -196,17 +202,17 @@ export async function POST(request: Request) {
             data: { tryOnDailyCount: { decrement: 1 }, tryOnDailySpendUsd: { decrement: reservedCost } }
           });
         }
-      }).catch((updateError: unknown) => console.error('Aggiornamento statistiche try-on non riuscito', updateError));
+      }).catch((updateError: unknown) => logError('tryon.stats.update.failed', updateError));
       if (!providerStarted) {
         reservedCost = 0;
       }
     }
-    console.error('Generazione try-on non riuscita', error);
+    logError('tryon.generation.failed', error);
     const status = /limite giornaliero/.test(message) ? 429 : 502;
     return NextResponse.json({
       error: status === 429 ? message : 'Non è stato possibile generare l’anteprima. Prova un’altra foto o continua senza la prova virtuale.'
     }, { status });
   } finally {
-    if (sourcePath) await deleteTemporaryAsset(sourcePath).catch((error: unknown) => console.error('Pulizia immagine di input non riuscita', error));
+    if (sourcePath) await deleteTemporaryAsset(sourcePath).catch((error: unknown) => logError('tryon.input.cleanup.failed', error));
   }
 }

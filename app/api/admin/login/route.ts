@@ -5,6 +5,8 @@ import { createAdminSession, cookieName } from '@/lib/admin-auth';
 import { prisma } from '@/lib/prisma';
 import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { logError } from '@/lib/logger';
+import { appEnv } from '@/lib/config';
 
 const schema = z.object({
   password: z.string().min(1).max(200),
@@ -14,7 +16,7 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const hostname = new URL(request.url).hostname;
-    const localDevelopment = process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1', '::1'].includes(hostname);
+    const localDevelopment = appEnv !== 'production' && process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1', '::1'].includes(hostname);
     const ip = clientIp(request);
     if (!localDevelopment) {
       const limit = await enforceRateLimit(ip, 'admin-login', 10, '15 m');
@@ -25,16 +27,11 @@ export async function POST(request: Request) {
     if (!localDevelopment && !await verifyTurnstile(parsed.data.turnstileToken, ip)) {
       return NextResponse.json({ error: 'Verifica anti-bot non riuscita.' }, { status: 400 });
     }
-    const username = 'admin';
-    const envHash = process.env.ADMIN_PASSWORD_HASH;
-    const envPassword = process.env.ADMIN_PASSWORD;
     const user = await prisma.adminUser.findFirst({
-      where: { OR: [{ username }, { email: username }] }
+      where: { email: process.env.ADMIN_EMAIL?.trim().toLowerCase() ?? '' }
     });
     const passwordMatches = user ? await bcrypt.compare(parsed.data.password, user.passwordHash) : false;
-    const envMatches = envHash ? await bcrypt.compare(parsed.data.password, envHash) : false;
-    const directEnvMatch = envPassword ? parsed.data.password === envPassword : false;
-    if ((!user && !envHash && !envPassword) || (!passwordMatches && !envMatches && !directEnvMatch)) {
+    if (!passwordMatches) {
       return NextResponse.json({ error: 'Credenziali non valide.' }, { status: 401 });
     }
     const token = await createAdminSession();
@@ -48,7 +45,7 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (error) {
-    console.error('Login admin non riuscito', error);
+    logError('admin.login.failed', error);
     return NextResponse.json({ error: 'Login non disponibile.' }, { status: 503 });
   }
 }

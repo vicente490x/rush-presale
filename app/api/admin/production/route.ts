@@ -3,6 +3,8 @@ import { ProductionStatus } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { paidPieces } from '@/lib/settings';
+import { logError } from '@/lib/logger';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 const schema = z.object({ status: z.nativeEnum(ProductionStatus) });
 const sequence = [
@@ -13,6 +15,7 @@ const sequence = [
 ];
 
 export async function POST(request: Request) {
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Autenticazione richiesta.' }, { status: 401 });
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: 'Stato produzione non valido.' }, { status: 400 });
   try {
@@ -32,7 +35,7 @@ export async function POST(request: Request) {
     await prisma.settings.update({ where: { id: 'global' }, data: { productionStatus: parsed.data.status } });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Aggiornamento stato produzione non riuscito', error);
+    logError('admin.production.update.failed', error);
     return NextResponse.json({ error: 'Impossibile aggiornare lo stato di produzione.' }, { status: 503 });
   }
 }

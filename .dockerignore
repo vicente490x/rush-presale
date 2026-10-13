@@ -1,0 +1,15 @@
+.git
+.next
+node_modules
+.env*
+tests
+coverage
+*.test.ts
+TEST_REPORT.md
+CLEANUP_PLAN.md
+PROMPT.md
+SPEC.md
+AUDIT.md
+README.md
+data/backups
+prisma/*.db*

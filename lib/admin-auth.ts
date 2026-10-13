@@ -27,4 +27,14 @@ export async function isAdminSession(token: string | undefined) {
   }
 }
 
+export async function isAdminRequest(request: Request) {
+  const cookie = request.headers.get('cookie')?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${cookieName}=`));
+  if (!cookie) return false;
+  try {
+    return await isAdminSession(decodeURIComponent(cookie.slice(cookieName.length + 1)));
+  } catch {
+    return false;
+  }
+}
+
 export { cookieName };

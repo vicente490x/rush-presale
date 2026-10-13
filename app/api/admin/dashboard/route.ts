@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { ClothingSize } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { paidPieces, settings, hasProductionStarted } from '@/lib/settings';
+import { logError } from '@/lib/logger';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Autenticazione richiesta.' }, { status: 401 });
   try {
     const [current, total, ordersCount, revenue, sizes, failedRefunds] = await Promise.all([
       settings(),
@@ -52,7 +55,7 @@ export async function GET() {
       tryOnCostUsd: Number(current.tryOnDailySpendUsd)
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
-    console.error('Dashboard admin non disponibile', error);
+    logError('admin.dashboard.unavailable', error);
     return NextResponse.json({ error: 'Dashboard non disponibile.' }, { status: 503 });
   }
 }

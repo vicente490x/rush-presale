@@ -3,10 +3,11 @@ import { ClothingSize, PaymentStatus, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
-import { publicConfig } from '@/lib/config';
+import { appEnv, publicConfig } from '@/lib/config';
 import { stripeClient } from '@/lib/stripe';
 import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { logError } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
         size: parsed.data.size,
         quantity: parsed.data.quantity,
         amountCents: parsed.data.quantity * 2500,
-        termsAcceptedAt: new Date()
+        termsAcceptedAt: new Date(),
+        isTest: appEnv !== 'production'
       }
     });
     try {
@@ -76,6 +78,7 @@ export async function POST(request: Request) {
           }
         }],
         metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        payment_intent_data: { metadata: { orderId: order.id, orderNumber: order.orderNumber } },
         success_url: `${siteUrl}/conferma?code=${order.orderNumber}`,
         cancel_url: `${siteUrl}/presale?annullato=1`,
         expires_at: Math.floor(Date.now() / 1000) + 30 * 60
@@ -100,9 +103,9 @@ export async function POST(request: Request) {
               return NextResponse.json({ error: 'La PRE-SALE è stata chiusa. Non è stato avviato alcun pagamento.' }, { status: 403 });
             }
           } catch (retrieveError) {
-            console.error(`Verifica checkout ${order.orderNumber} dopo chiusura non riuscita`, retrieveError);
+            logError('checkout.after_close.verify.failed', retrieveError);
           }
-          console.error(`Annullamento checkout ${order.orderNumber} dopo chiusura non riuscito`, expireError);
+          logError('checkout.after_close.expire.failed', expireError);
           return NextResponse.json({ error: 'La PRE-SALE è chiusa; contatta l’assistenza per verificare il pagamento.' }, { status: 502 });
         }
       }
@@ -110,14 +113,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ checkoutUrl: session.url }, { status: 201 });
     } catch (error) {
       await prisma.order.updateMany({ where: { id: order.id, paymentStatus: PaymentStatus.PENDING }, data: { paymentStatus: PaymentStatus.FAILED } });
-      console.error(`Creazione checkout ${order.orderNumber} non riuscita`, error);
+      logError('checkout.create.failed', error);
       return NextResponse.json({ error: 'Checkout non disponibile. Riprova più tardi.' }, { status: 503 });
     }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error('Creazione ordine non riuscita', error.code);
+      logError('order.create.failed', error);
     } else {
-      console.error('Creazione ordine non riuscita', error);
+      logError('order.create.failed', error);
     }
     return NextResponse.json({ error: 'Impossibile completare la richiesta. Riprova più tardi.' }, { status: 503 });
   }

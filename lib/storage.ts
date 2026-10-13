@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
+import { appEnv } from '@/lib/config';
 
 let storage: ReturnType<typeof createClient> | undefined;
 
@@ -21,7 +22,7 @@ async function writeLocalTemporaryAsset(path: string, body: Buffer) {
 }
 
 export async function uploadTemporaryAsset(path: string, body: Buffer, contentType: string, expiresAt: Date) {
-  if (process.env.TRYON_PROVIDER_MODE === 'mock' || (!process.env.SUPABASE_URL && !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+  if (appEnv !== 'production' && (process.env.TRYON_PROVIDER_MODE === 'mock' || (!process.env.SUPABASE_URL && !process.env.SUPABASE_SERVICE_ROLE_KEY))) {
     const absolutePath = await writeLocalTemporaryAsset(path, body);
     await (await import('@/lib/prisma')).prisma.temporaryTryOnAsset.create({ data: { path: absolutePath, expiresAt } });
     return absolutePath;
@@ -42,7 +43,7 @@ export async function uploadTemporaryAsset(path: string, body: Buffer, contentTy
 }
 
 export async function deleteTemporaryAsset(path: string) {
-  if (process.env.TRYON_PROVIDER_MODE === 'mock' || (!process.env.SUPABASE_URL && !process.env.SUPABASE_SERVICE_ROLE_KEY)) {
+  if (appEnv !== 'production' && (process.env.TRYON_PROVIDER_MODE === 'mock' || (!process.env.SUPABASE_URL && !process.env.SUPABASE_SERVICE_ROLE_KEY))) {
     await fs.rm(path, { force: true });
     const { prisma } = await import('@/lib/prisma');
     await prisma.temporaryTryOnAsset.deleteMany({ where: { path } });

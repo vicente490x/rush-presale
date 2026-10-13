@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { ClothingSize } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { isAdminRequest } from '@/lib/admin-auth';
 
 function csv(value: unknown) {
   const text = String(value ?? '').replace(/[\r\n]/g, ' ');
   return `"${/^\s*[=+\-@]/.test(text) ? `'${text}` : text.replace(/"/g, '""')}"`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: 'Autenticazione richiesta.' }, { status: 401 });
   const orders = await prisma.order.findMany({ where: { paymentStatus: 'PAID' }, orderBy: { createdAt: 'asc' } });
   const groups = await prisma.order.groupBy({
     by: ['size'],
