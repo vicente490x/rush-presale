@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0A0A0A">
+  <meta name="description" content="Pannello amministrativo PRE-SALE RUSH.">
+  <link rel="icon" href="/assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <meta name="robots" content="noindex">
+  <title>Admin — Rush</title>
+</head>
+<body class="admin-page">
+<div id="login" class="login" hidden>
+  <img src="/assets/logo.png" alt="Logo RUSH">
+  <form id="lf">
+    <input class="inp" id="pw" type="password" placeholder="Password admin" autocomplete="current-password">
+    <button class="pay" style="font-size:16px;min-height:52px">ENTRA</button>
+    <p class="err" id="lerr"></p>
+  </form>
+</div>
+
+<main id="app" class="admin" hidden>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h1 class="wide">RUSH PRE-SALE</h1>
+    <button class="btn sm" id="out">Esci</button>
+  </div>
+  <div id="banner"></div>
+  <div class="grid" id="stats"></div>
+  <div class="controls">
+    <button class="btn" id="toggle"></button>
+    <select class="sel" id="prod"></select>
+    <a class="btn" href="/api/admin/export.csv">Esporta CSV / Excel</a>
+  </div>
+  <div class="sizegrid" id="sizes"></div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ordine</th><th>Nome</th><th>Email</th><th>Taglia</th><th>Qtà</th><th>Importo</th><th>Pagato il</th><th>Scadenza</th><th>Pagamento</th><th>Rimborso</th><th>Consegna</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+<script src="/js/admin.js" type="module"></script>
+</body>
+</html>

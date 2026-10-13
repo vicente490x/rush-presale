@@ -1,0 +1,24 @@
+{
+  "name": "rush-presale",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "backup": "node scripts/backup.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.5.0",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "multer": "^1.4.5-lts.1",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "stripe": "^17.4.0"
+  }
+}
