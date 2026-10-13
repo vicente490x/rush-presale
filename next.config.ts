@@ -24,9 +24,6 @@ const nextConfig: NextConfig = {
         }
       ]
     }];
-  },
-  experimental: {
-    optimizePackageImports: ['framer-motion', 'gsap']
   }
 };
 

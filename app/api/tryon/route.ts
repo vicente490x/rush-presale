@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { uploadTemporaryAsset, deleteTemporaryAsset } from '@/lib/storage';
-import { FalFashnProvider } from '@/lib/tryon-provider';
+import { createTryOnProvider } from '@/lib/tryon-provider';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -102,9 +102,8 @@ export async function POST(request: Request) {
       update: {}
     });
     if (!current.tryOnEnabled) return NextResponse.json({ error: 'La prova virtuale non è al momento disponibile.' }, { status: 503 });
-    const apiKey = process.env.FAL_KEY;
-    const storageConfigured = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-    if (!apiKey || !storageConfigured) return NextResponse.json({ error: 'Il servizio prova virtuale non è configurato.' }, { status: 503 });
+    const storageConfigured = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) || process.env.TRYON_PROVIDER_MODE === 'mock';
+    if (!storageConfigured) return NextResponse.json({ error: 'Il servizio prova virtuale non è configurato.' }, { status: 503 });
 
     const maxSpend = Number(process.env.TRYON_MAX_DAILY_SPEND_USD ?? 5);
     const cost = Number(process.env.TRYON_COST_ESTIMATE_USD ?? 0.075);
@@ -149,7 +148,7 @@ export async function POST(request: Request) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!siteUrl) throw new Error('URL pubblico non configurato.');
     const garmentUrl = `${siteUrl.replace(/\/$/, '')}/assets/mockup-fronte.png`;
-    const provider = new FalFashnProvider(apiKey, process.env.TRYON_MODEL_ID);
+    const provider = createTryOnProvider();
     providerStarted = true;
     const generated = await provider.generate(sourceUrl, garmentUrl);
     const generatedUrl = generated.imageUrl;

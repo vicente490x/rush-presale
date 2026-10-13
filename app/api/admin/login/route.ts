@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { createAdminSession, cookieName } from '@/lib/admin-auth';
+import { prisma } from '@/lib/prisma';
 import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
 
@@ -24,8 +25,16 @@ export async function POST(request: Request) {
     if (!localDevelopment && !await verifyTurnstile(parsed.data.turnstileToken, ip)) {
       return NextResponse.json({ error: 'Verifica anti-bot non riuscita.' }, { status: 400 });
     }
-    const hash = process.env.ADMIN_PASSWORD_HASH;
-    if (!hash || !await bcrypt.compare(parsed.data.password, hash)) {
+    const username = 'admin';
+    const envHash = process.env.ADMIN_PASSWORD_HASH;
+    const envPassword = process.env.ADMIN_PASSWORD;
+    const user = await prisma.adminUser.findFirst({
+      where: { OR: [{ username }, { email: username }] }
+    });
+    const passwordMatches = user ? await bcrypt.compare(parsed.data.password, user.passwordHash) : false;
+    const envMatches = envHash ? await bcrypt.compare(parsed.data.password, envHash) : false;
+    const directEnvMatch = envPassword ? parsed.data.password === envPassword : false;
+    if ((!user && !envHash && !envPassword) || (!passwordMatches && !envMatches && !directEnvMatch)) {
       return NextResponse.json({ error: 'Credenziali non valide.' }, { status: 401 });
     }
     const token = await createAdminSession();

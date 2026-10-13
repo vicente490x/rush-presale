@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 
 let redis: Redis | undefined;
 const limiters = new Map<string, Ratelimit>();
+const memoryLimiters = new Map<string, { count: number; resetAt: number }>();
 
 function getRedis() {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -13,7 +14,29 @@ function getRedis() {
   return redis;
 }
 
+function parseWindowMs(window: `${number} m` | `${number} h`) {
+  const value = Number.parseInt(window, 10);
+  return window.endsWith('h') ? value * 60 * 60 * 1000 : value * 60 * 1000;
+}
+
 export async function enforceRateLimit(ip: string, namespace: string, limit: number, window: `${number} m` | `${number} h`) {
+  const subject = createHash('sha256').update(ip).digest('hex');
+  const canUseRedis = Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) && process.env.RATE_LIMIT_MODE !== 'memory';
+  if (!canUseRedis) {
+    const key = `${namespace}:${subject}`;
+    const now = Date.now();
+    const current = memoryLimiters.get(key);
+    if (!current || current.resetAt <= now) {
+      memoryLimiters.set(key, { count: 1, resetAt: now + parseWindowMs(window) });
+      return { success: true, limit, remaining: limit - 1, reset: new Date(now + parseWindowMs(window)) } as const;
+    }
+    if (current.count >= limit) {
+      return { success: false, limit, remaining: 0, reset: new Date(current.resetAt) } as const;
+    }
+    current.count += 1;
+    return { success: true, limit, remaining: limit - current.count, reset: new Date(current.resetAt) } as const;
+  }
+
   let limiter = limiters.get(namespace);
   if (!limiter) {
     limiter = new Ratelimit({
@@ -23,7 +46,6 @@ export async function enforceRateLimit(ip: string, namespace: string, limit: num
     });
     limiters.set(namespace, limiter);
   }
-  const subject = createHash('sha256').update(ip).digest('hex');
   return limiter.limit(subject);
 }
 

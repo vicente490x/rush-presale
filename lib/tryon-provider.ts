@@ -4,6 +4,13 @@ export interface TryOnProvider {
   generate(modelImage: string, garmentImage: string): Promise<{ imageUrl: string; attempts: number }>;
 }
 
+export class MockTryOnProvider implements TryOnProvider {
+  async generate(_modelImage: string, _garmentImage: string) {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000"><rect width="100%" height="100%" fill="#111111"/><circle cx="400" cy="300" r="160" fill="#7b1e1e" opacity="0.9"/><rect x="250" y="340" width="300" height="340" rx="36" fill="#b71234"/><text x="400" y="520" fill="white" font-family="Arial" font-size="60" text-anchor="middle">RUSH</text></svg>';
+    return { imageUrl: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`, attempts: 1 };
+  }
+}
+
 export class FalFashnProvider implements TryOnProvider {
   constructor(private readonly key: string, private readonly modelId = 'fal-ai/fashn/tryon') {}
 
@@ -33,4 +40,10 @@ export class FalFashnProvider implements TryOnProvider {
     }
     throw lastError instanceof Error ? lastError : new Error('Il provider non ha completato la prova virtuale.');
   }
+}
+
+export function createTryOnProvider() {
+  if (process.env.TRYON_PROVIDER_MODE === 'mock') return new MockTryOnProvider();
+  if (!process.env.FAL_KEY) throw new Error('Provider try-on non configurato.');
+  return new FalFashnProvider(process.env.FAL_KEY, process.env.TRYON_MODEL_ID ?? 'fal-ai/fashn/tryon');
 }

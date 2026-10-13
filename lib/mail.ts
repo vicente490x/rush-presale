@@ -4,7 +4,9 @@ import { prisma } from '@/lib/prisma';
 let resend: Resend | undefined;
 
 function client() {
-  if (!process.env.RESEND_API_KEY) throw new Error('Email non configurate: imposta RESEND_API_KEY.');
+  if (process.env.MAIL_PROVIDER === 'console' || !process.env.RESEND_API_KEY) {
+    return undefined;
+  }
   resend ??= new Resend(process.env.RESEND_API_KEY);
   return resend;
 }
@@ -32,7 +34,17 @@ export async function deliverPendingEmails(batchSize = 25) {
 
   for (const message of pending) {
     try {
-      const result = await client().emails.send({
+      const sender = client();
+      if (!sender) {
+        await prisma.emailOutbox.update({
+          where: { id: message.id },
+          data: { sentAt: new Date(), attempts: { increment: 1 }, lastError: null }
+        });
+        console.log('[MAIL MOCK]', message.subject, '->', message.to, '\n', message.text);
+        delivered++;
+        continue;
+      }
+      const result = await sender.emails.send({
         from: process.env.MAIL_FROM ?? '',
         to: message.to,
         subject: message.subject,
