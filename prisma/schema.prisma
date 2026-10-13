@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ClothingSize {
+  XS
+  S
+  M
+  L
+  XL
+  XXL
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum OrderStatus {
+  RESERVED
+  CONFIRMED
+  REFUNDED
+}
+
+enum RefundStatus {
+  NONE
+  PENDING
+  REFUNDED
+  FAILED
+}
+
+enum DeliveryStatus {
+  DA_CONSEGNARE
+  SERATA_RUSH
+  PR
+  CONSEGNATA
+}
+
+enum ProductionStatus {
+  IN_RACCOLTA
+  SOGLIA_RAGGIUNTA
+  PRODUZIONE_AVVIATA
+  PRODUZIONE_COMPLETATA
+}
+
+enum TryOnStatus {
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+model Order {
+  id                    String         @id @default(cuid())
+  orderNumber           String         @unique
+  firstName             String
+  lastName              String
+  email                 String
+  size                  ClothingSize
+  quantity              Int
+  amountCents           Int
+  stripeSessionId       String?        @unique
+  stripePaymentIntentId String?        @unique
+  paymentStatus         PaymentStatus  @default(PENDING)
+  paidAt                DateTime?
+  expiresAt             DateTime?
+  orderStatus           OrderStatus    @default(RESERVED)
+  refundStatus          RefundStatus   @default(NONE)
+  refundedAt            DateTime?
+  confirmationSentAt    DateTime?
+  expiryWarningSentAt   DateTime?
+  deliveryStatus        DeliveryStatus @default(DA_CONSEGNARE)
+  termsAcceptedAt       DateTime
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([paymentStatus, refundStatus])
+  @@index([expiresAt, refundStatus])
+  @@index([email])
+}
+
+model Settings {
+  id                   String           @id @default("global")
+  threshold            Int              @default(15)
+  presaleOpen          Boolean          @default(true)
+  productionStatus     ProductionStatus @default(IN_RACCOLTA)
+  thresholdNotifiedAt  DateTime?
+  tryOnEnabled         Boolean          @default(false)
+  tryOnDailyLimit      Int              @default(50)
+  tryOnDailyCount      Int              @default(0)
+  tryOnDailySpendUsd   Decimal          @default(0) @db.Decimal(10, 4)
+  tryOnSpendResetAt    DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+}
+
+model TryOnJob {
+  id           String      @id @default(cuid())
+  status       TryOnStatus
+  createdAt    DateTime    @default(now())
+  durationMs   Int?
+  provider     String
+  costEstimate Decimal     @default(0) @db.Decimal(10, 4)
+
+  @@index([createdAt, status])
+}
+
+model StripeWebhookEvent {
+  id         String   @id
+  type       String
+  processedAt DateTime @default(now())
+}
+
+model RateLimitEntry {
+  key       String   @id
+  count     Int      @default(0)
+  resetAt   DateTime
+  updatedAt DateTime @updatedAt
+}
+
+model TemporaryTryOnAsset {
+  id        String   @id @default(cuid())
+  path      String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model EmailOutbox {
+  id        String   @id @default(cuid())
+  dedupeKey String   @unique
+  to        String
+  subject   String
+  text      String
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+
+  @@index([sentAt, createdAt])
+}

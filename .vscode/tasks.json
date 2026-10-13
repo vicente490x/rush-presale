@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Avvia RUSH in locale",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Configura PostgreSQL locale RUSH",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".\\scripts\\setup-local-postgres.ps1"],
+      "isBackground": false,
+      "problemMatcher": []
+    },
+    {
+      "label": "Imposta accesso admin locale",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "admin:setup"],
+      "isBackground": false,
+      "problemMatcher": []
+    }
+  ]
+}

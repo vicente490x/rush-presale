@@ -1,56 +1,79 @@
-# Rush PRE-SALE
+# RUSH — PRE-SALE
 
-Sito mobile-first per la PRE-SALE della maglietta Rush: 25€, soglia 15 pezzi, rimborso automatico dopo 2 mesi.
-Stack: Node.js 22 · Express · SQLite · Stripe Checkout · Nodemailer.
+Storefront Next.js per la PRE-SALE RUSH. Prezzo: 25 € a maglietta; la produzione può essere avviata al raggiungimento della soglia configurata. I pagamenti sono gestiti da Stripe Checkout e gli ordini vengono confermati esclusivamente dal webhook Stripe verificato.
+
+## Requisiti
+
+- Node.js 22 o 24 (vedi `.nvmrc`).
+- PostgreSQL accessibile tramite `DATABASE_URL` e `DIRECT_URL`.
+- Credenziali Stripe, Resend e Upstash Redis per i flussi di vendita e le email.
+- Supabase Storage e fal.ai sono necessari solo se si attiva la prova virtuale.
 
 ## Avvio locale
 
-Usa Node.js 22: `better-sqlite3` è un modulo nativo e deve essere eseguito con la stessa versione principale di Node usata per installarlo.
-
-Su Windows, seleziona prima Node.js 22 con un version manager (ad esempio `nvm use 22`). Se `better-sqlite3` è stato installato con Node 24, reinstalla le dipendenze dopo aver selezionato Node 22:
-
-```bash
+```powershell
 npm install
+.\scripts\setup-local-postgres.ps1
 ```
 
-Poi crea `.env` da `.env.example`, modifica `ADMIN_PASSWORD` e `SESSION_SECRET`, quindi avvia il server:
+Lo script individua PostgreSQL installato in `Program Files`, richiede la password amministrativa senza mostrarla, crea un database e un utente locali dedicati, scrive la connessione in `.env.local` (ignorato da Git) e applica le migrazioni. Non legge, modifica o cancella il precedente database SQLite. In locale `NEXT_PUBLIC_SITE_URL` può essere `http://localhost:3000`; in produzione deve usare HTTPS.
+
+Se Next.js è già in esecuzione, arrestalo con `Ctrl+C` nel terminale che lo ospita e riavvialo:
 
 ```powershell
-Copy-Item .env.example .env
-npm start
+npm run dev
 ```
 
-In altri shell, usa `cp .env.example .env` al posto di `Copy-Item`.
+- Storefront: http://localhost:3000
+- PRE-SALE: http://localhost:3000/presale
+- Admin: http://localhost:3000/admin/login
 
-- Sito: http://localhost:3000
-- Admin: http://localhost:3000/admin.html
-- Senza chiavi Stripe parte in **DEMO_MODE**: il pagamento è simulato. Le email vengono stampate in console.
-- In locale la password admin predefinita è `admin`: cambiala sempre prima di esporre il sito a Internet.
-- Test: `npm test`
+Configura l’accesso admin locale (la password viene digitata senza echo; password hash e chiave di sessione vengono salvate in `.env.local`):
 
-## Andare online
+```powershell
+npm run admin:setup
+```
 
-1. Crea un account Stripe e imposta `STRIPE_SECRET_KEY` e `DEMO_MODE=false`.
-2. In Stripe → Developers → Webhooks configura `https://TUODOMINIO/api/stripe/webhook` per gli eventi `checkout.session.completed` e `checkout.session.expired`; imposta `STRIPE_WEBHOOK_SECRET`.
-3. Imposta `BASE_URL=https://TUODOMINIO`, `NODE_ENV=production`, `ADMIN_EMAIL` e le credenziali `SMTP_*`. In produzione l'app rifiuta l'avvio senza HTTPS, password admin forte, secret di sessione casuale (almeno 32 caratteri), Stripe e SMTP.
-4. Usa un hosting con disco persistente per `DATA_DIR` (inclusi `data/backups`) e HTTPS, per esempio Railway, Render, Fly.io o un VPS. Esegui periodicamente il backup anche fuori dal server.
-5. Completa i campi segnaposto `[... ]` in Privacy, Termini e Rimborsi e fai verificare i testi prima di accettare ordini reali.
+Per l’accesso da `localhost` in modalità sviluppo, il form admin non richiede Turnstile né Upstash. Questo bypass non è attivo in produzione o su hostname diversi da localhost.
 
-## Logica
+## Configurazione servizi
 
-- Contatore = somma dei pezzi degli ordini pagati e non rimborsati.
-- A 15 pezzi: email all'admin, stato `SOGLIA RAGGIUNTA`. La PRE-SALE **resta aperta**.
-- La PRE-SALE si apre/chiude solo da admin. La chiusura annulla i checkout Stripe ancora aperti; la produzione avanza solo dopo la soglia e non può essere riportata indietro.
-- Ogni ordine ha scadenza = pagamento + 2 mesi. Un job orario rimborsa (Stripe) gli ordini scaduti se la produzione non è avviata, avvisa acquirente e admin, e manda un avviso 7 giorni prima.
-- Le date di scadenza usano mesi di calendario e si adeguano all'ultimo giorno del mese quando necessario.
-- Backup giornaliero del DB in `data/backups` (ultimi 14). Manuale: `npm run backup`.
-- Sicurezza: helmet/CSP, rate limit, honeypot anti-bot, login admin con cookie firmato, nessun dato carta sul sito.
+| Variabili | Servizio / uso |
+| --- | --- |
+| `DATABASE_URL`, `DIRECT_URL` | PostgreSQL e migrazioni Prisma |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe Checkout e webhook firmati; usa `sk_test_` finché i pagamenti live non sono autorizzati |
+| `ALLOW_LIVE_PAYMENTS` | Deve rimanere `false` fino ad autorizzazione esplicita dei pagamenti reali |
+| `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` | Outbox e invio email |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limit distribuito |
+| `ADMIN_PASSWORD_HASH`, `SESSION_SECRET` | Accesso amministratore |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Protezione anti-bot dei moduli |
+| `CRON_SECRET` | Autenticazione dei cron job |
+| `FAL_KEY`, `TRYON_MODEL_ID` | Provider commerciale della prova virtuale |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TRYON_BUCKET` | Storage privato temporaneo per le foto della prova virtuale |
+| `TRYON_COST_ESTIMATE_USD`, `TRYON_MAX_DAILY_SPEND_USD`, `TRYON_DAILY_LIMIT` | Stima e limiti di spesa della prova virtuale |
 
-## Prova AI (facoltativa)
+La prova virtuale resta disabilitata finché non viene attivata dal pannello admin. Prima di abilitarla, verifica licenza, prezzo, conservazione e uso delle immagini con fal.ai/FASHN e aggiorna l’informativa privacy: il costo configurato è solo una stima, non una tariffa garantita.
 
-Serve un account Replicate: imposta `REPLICATE_API_TOKEN` e `REPLICATE_MODEL_VERSION` (versione di un modello virtual try-on, es. IDM-VTON). Senza queste variabili la sezione resta nascosta.
+## Stripe
 
-## Da fare prima del lancio
+Configura nel Dashboard Stripe il webhook `https://TUODOMINIO/api/stripe/webhook` per `checkout.session.completed` e `checkout.session.expired`, quindi copia il relativo secret in `STRIPE_WEBHOOK_SECRET`. Un ordine diventa pagato esclusivamente dopo la verifica della firma e dell’evento Stripe.
 
-- Rivedere Privacy, Termini e Rimborsi in `public/` (testi base con campi `[...]`) con un professionista.
-- Sostituire `public/img/front.jpg` con una foto piatta della maglietta se vuoi migliorare la prova AI.
+## Verifiche e produzione
+
+```powershell
+npm run lint
+npm test
+npm run build
+```
+
+Usa un hosting Node compatibile con Next.js e con cron pianificati. `vercel.json` esegue il job amministrativo giornaliero e la pulizia degli asset temporanei ogni cinque minuti; verifica che il piano del provider supporti la frequenza richiesta e configura `CRON_SECRET`. Imposta tutte le variabili d’ambiente nell’hosting, non nel repository.
+
+Le pagine legali contengono ancora campi da completare (ragione sociale, sede, contatti e dettagli verificati sui provider). Devono essere revisionate e completate prima della vendita reale. Non attivare i pagamenti live o la prova AI prima della revisione operativa, contrattuale e legale.
+
+## Logica PRE-SALE
+
+- Il contatore considera i pezzi pagati non rimborsati.
+- Al raggiungimento della soglia viene accodata una notifica admin; la PRE-SALE resta aperta.
+- Chiusura, stati produzione, gestione consegne e rimborsi sono disponibili nell’area admin.
+- Ogni ordine pagato scade due mesi di calendario dopo il pagamento. Se la produzione non è stata avviata, il job pianificato tenta il rimborso Stripe e accoda le notifiche.
+- Foto e risultati della prova AI non sono collegati agli ordini. La foto sorgente viene rimossa dallo storage del sito dopo l’elaborazione o dal job di pulizia alla scadenza.

@@ -1,4 +1,11 @@
-node_modules
+node_modules/
+.next/
+out/
+coverage/
+.vercel/
 .env
+.env.local
+.env.*.local
 data/*.db*
-data/backups
+data/backups/
+*.tsbuildinfo
