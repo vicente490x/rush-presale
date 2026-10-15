@@ -8,14 +8,19 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "node --import tsx --import ./scripts/load-test-env.ts --experimental-test-coverage --test tests/*.test.ts",
+    "test:setup": "tsx scripts/setup-test-env.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "admin:setup": "tsx scripts/setup-local-admin.ts"
+    "admin:setup": "tsx scripts/setup-local-admin.ts",
+    "seed": "tsx prisma/seed.ts",
+    "seed:demo": "tsx prisma/seed.ts --demo",
+    "db:reset": "tsx scripts/db-reset.ts"
   },
   "dependencies": {
     "@fal-ai/client": "^1.6.2",
@@ -44,5 +49,8 @@
     "prisma": "^6.12.0",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

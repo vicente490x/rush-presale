@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { addCalendarMonths } from '@/lib/dates';
-import { orderConfirmationText } from '@/lib/mail';
+import { Prisma } from '@prisma/client';
+import { deliverPendingEmails, orderConfirmationText } from '@/lib/mail';
 import { prisma } from '@/lib/prisma';
 import { paidPieces } from '@/lib/settings';
 import { stripeClient } from '@/lib/stripe';
+import { now } from '@/lib/clock';
+import { hasReachedThreshold, orderExpiry } from '@/lib/presale-logic';
 
 export const runtime = 'nodejs';
 
@@ -17,10 +19,10 @@ async function enqueueThresholdNotification() {
       _sum: { quantity: true }
     });
     const total = pieces._sum.quantity ?? 0;
-    if (total < settings.threshold) return;
+    if (!hasReachedThreshold(total, settings.threshold)) return;
     const claimed = await tx.settings.updateMany({
       where: { id: 'global', thresholdNotifiedAt: null },
-      data: { thresholdNotifiedAt: new Date(), productionStatus: 'SOGLIA_RAGGIUNTA' }
+      data: { thresholdNotifiedAt: now(), productionStatus: 'SOGLIA_RAGGIUNTA' }
     });
     if (claimed.count !== 1) return;
     await tx.emailOutbox.upsert({
@@ -83,12 +85,12 @@ export async function POST(request: Request) {
         if (!order) throw new Error(`Ordine Stripe non trovato: ${session.metadata.orderId}`);
         const paidAt = new Date(event.created * 1000);
         await tx.order.updateMany({
-          where: { id: order.id, paymentStatus: 'PENDING' },
+          where: { id: order.id, paymentStatus: { in: ['PENDING', 'FAILED'] } },
           data: {
             paymentStatus: 'PAID',
             orderStatus: 'CONFIRMED',
             paidAt,
-            expiresAt: addCalendarMonths(paidAt, 2),
+            expiresAt: orderExpiry(paidAt),
             stripeSessionId: session.id,
             stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id
           }
@@ -102,13 +104,40 @@ export async function POST(request: Request) {
             data: { paymentStatus: 'FAILED' }
           });
         }
+      } else if (event.type === 'checkout.session.async_payment_failed') {
+        const session = event.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.orderId) {
+          await tx.order.updateMany({
+            where: { id: session.metadata.orderId, paymentStatus: 'PENDING' },
+            data: { paymentStatus: 'FAILED' }
+          });
+        }
+      } else if (event.type === 'payment_intent.payment_failed') {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        if (intent.metadata.orderId) {
+          await tx.order.updateMany({
+            where: { id: intent.metadata.orderId, paymentStatus: 'PENDING' },
+            data: { paymentStatus: 'FAILED', stripePaymentIntentId: intent.id }
+          });
+        } else {
+          await tx.order.updateMany({
+            where: { stripePaymentIntentId: intent.id, paymentStatus: 'PENDING' },
+            data: { paymentStatus: 'FAILED' }
+          });
+        }
       }
     });
 
     if (confirmationOrderId) await ensureOrderConfirmation(confirmationOrderId);
     await enqueueThresholdNotification();
+    await deliverPendingEmails();
     return NextResponse.json({ received: true, pieces: await paidPieces() });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002' &&
+      error.meta?.modelName === 'StripeWebhookEvent') {
+      return NextResponse.json({ received: true, pieces: await paidPieces() });
+    }
     console.error(`Elaborazione webhook ${event.id} non riuscita`, error);
     return NextResponse.json({ error: 'Elaborazione webhook non riuscita.' }, { status: 500 });
   }

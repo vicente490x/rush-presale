@@ -35,6 +35,7 @@ type Order = {
   paidAt: string | null;
   expiresAt: string | null;
   refundStatus: string;
+  refundedAt: string | null;
   deliveryStatus: string;
   createdAt: string;
 };
@@ -58,6 +59,10 @@ export function AdminDashboard() {
   const [dashboard, setDashboard] = useState<Dashboard>();
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('');
+  const [refundFilter, setRefundFilter] = useState('');
+  const [deliveryFilter, setDeliveryFilter] = useState('');
+  const [sizeFilter, setSizeFilter] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const router = useRouter();
@@ -113,7 +118,13 @@ export function AdminDashboard() {
     router.refresh();
   }
 
-  const filtered = orders.filter((order) => `${order.orderNumber} ${order.firstName} ${order.lastName} ${order.email} ${order.size}`.toLowerCase().includes(search.toLowerCase()));
+  const filtered = orders.filter((order) =>
+    `${order.orderNumber} ${order.firstName} ${order.lastName} ${order.email} ${order.size}`.toLowerCase().includes(search.toLowerCase()) &&
+    (!paymentFilter || order.paymentStatus === paymentFilter) &&
+    (!refundFilter || order.refundStatus === refundFilter) &&
+    (!deliveryFilter || order.deliveryStatus === deliveryFilter) &&
+    (!sizeFilter || order.size === sizeFilter)
+  );
   const tryOnEnabled = dashboard?.tryOnEnabled ?? false;
   const next = dashboard ? nextProduction[dashboard.production] : undefined;
 
@@ -141,6 +152,28 @@ export function AdminDashboard() {
             <strong>Quantità per taglia</strong>
             <div className="size-summary">{Object.entries(dashboard.bySize).map(([size, quantity]) => <span key={size}>{size} · {quantity}</span>)}</div>
           </section>
+          <section className="admin-card">
+            <label htmlFor="presale-threshold">Soglia minima di produzione</label>
+            <div className="admin-actions">
+              <input
+                className="form-control"
+                id="presale-threshold"
+                type="number"
+                min="1"
+                max="1000000"
+                step="1"
+                defaultValue={dashboard.threshold}
+                disabled={busy || dashboard.total > 0 || dashboard.production !== 'IN_RACCOLTA'}
+              />
+              <button
+                disabled={busy || dashboard.total > 0 || dashboard.production !== 'IN_RACCOLTA'}
+                onClick={() => action('/api/admin/settings/threshold', {
+                  threshold: Number((document.getElementById('presale-threshold') as HTMLInputElement)?.value)
+                })}
+              >SALVA SOGLIA</button>
+            </div>
+            <small>Modificabile solo prima del primo pagamento confermato.</small>
+          </section>
           <section className="admin-card tryon-stats">
             <strong>PROVA VIRTUALE</strong>
             <span>Generazioni oggi: {dashboard.tryOnGenerations}</span>
@@ -162,17 +195,25 @@ export function AdminDashboard() {
             <button disabled={busy} onClick={() => action('/api/admin/presale', { open: !dashboard.open }, dashboard.open ? 'Chiudere la PRE-SALE? I checkout in sospeso verranno annullati.' : 'Riaprire la PRE-SALE?')}>{dashboard.open ? 'CHIUDI PRE-SALE' : 'APRI PRE-SALE'}</button>
             {next && <button disabled={busy || (next === 'SOGLIA_RAGGIUNTA' && !dashboard.thresholdReached) || (next === 'PRODUZIONE_AVVIATA' && !dashboard.thresholdReached)} onClick={() => action('/api/admin/production', { status: next }, `Confermi il passaggio a ${productionLabels[next]}?`)}>{productionLabels[next]}</button>}
             <a href="/api/admin/export" download>ESPORTA ORDINI CSV</a>
+            <a href="/api/admin/export?format=xls" download>ESPORTA ORDINI EXCEL</a>
           </div>
           <section>
-            <div className="orders-heading"><h2>ORDINI</h2><input className="form-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cerca ordine, nome, email o taglia" /></div>
+            <div className="orders-heading">
+              <h2>ORDINI</h2>
+              <input className="form-control" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cerca ordine, nome o email" />
+              <select aria-label="Filtra pagamento" value={paymentFilter} onChange={(event) => setPaymentFilter(event.target.value)}><option value="">Tutti i pagamenti</option><option>PAID</option><option>PENDING</option><option>FAILED</option></select>
+              <select aria-label="Filtra rimborso" value={refundFilter} onChange={(event) => setRefundFilter(event.target.value)}><option value="">Tutti i rimborsi</option><option>NONE</option><option>PENDING</option><option>FAILED</option><option>REFUNDED</option></select>
+              <select aria-label="Filtra consegna" value={deliveryFilter} onChange={(event) => setDeliveryFilter(event.target.value)}><option value="">Tutte le consegne</option>{deliveryStates.map((state) => <option key={state}>{state}</option>)}</select>
+              <select aria-label="Filtra taglia" value={sizeFilter} onChange={(event) => setSizeFilter(event.target.value)}><option value="">Tutte le taglie</option>{['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => <option key={size}>{size}</option>)}</select>
+            </div>
             <div className="table-scroll">
               <table className="orders-table">
-                <thead><tr><th>Ordine</th><th>Nome</th><th>Email</th><th>Taglia</th><th>Qtà</th><th>Importo</th><th>Pagamento</th><th>Pagato</th><th>Scadenza</th><th>Produzione</th><th>Rimborso</th><th>Consegna</th><th>Azioni</th></tr></thead>
+                <thead><tr><th>Ordine</th><th>Creato</th><th>Nome</th><th>Email</th><th>Taglia</th><th>Qtà</th><th>Importo</th><th>Pagamento</th><th>Pagato</th><th>Scadenza</th><th>Produzione</th><th>Rimborso</th><th>Rimborsato</th><th>Consegna</th><th>Azioni</th></tr></thead>
                 <tbody>{filtered.map((order) => (
                   <tr key={order.id}>
-                    <td>{order.orderNumber}</td><td>{order.firstName} {order.lastName}</td><td>{order.email}</td><td>{order.size}</td>
+                    <td>{order.orderNumber}</td><td>{date(order.createdAt)}</td><td>{order.firstName} {order.lastName}</td><td>{order.email}</td><td>{order.size}</td>
                     <td>{order.quantity}</td><td>{money(order.amountCents)}</td><td>{order.paymentStatus}</td><td>{date(order.paidAt)}</td>
-                    <td>{date(order.expiresAt)}</td><td>{dashboard.production}</td><td>{order.refundStatus}</td>
+                    <td>{date(order.expiresAt)}</td><td>{dashboard.production}</td><td>{order.refundStatus}</td><td>{date(order.refundedAt)}</td>
                     <td><select value={order.deliveryStatus} onChange={(event) => changeDelivery(order.id, event)}>{deliveryStates.map((state) => <option value={state} key={state}>{state}</option>)}</select></td>
                     <td>{order.paymentStatus === 'PAID' && order.refundStatus !== 'REFUNDED' && <button disabled={busy} onClick={() => action(`/api/admin/orders/${order.id}/refund`, {}, `Rimborsare l’ordine ${order.orderNumber} tramite Stripe?`)}>RIMBORSA</button>}</td>
                   </tr>

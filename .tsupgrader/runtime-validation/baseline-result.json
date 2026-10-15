@@ -1,0 +1,125 @@
+{
+  "planHash": "6c5e20a7f7af23a35368825aa37111fa4908a2988e25eefc1bff4e6ee110fde2",
+  "phase": "baseline",
+  "recordedAtUtc": "2026-10-14T07:37:19.7316111Z",
+  "retryCount": 0,
+  "resetBaseline": true,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 43512,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "lint-no-emit",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E rush-presale@2.0.0 lint\r\n\u003E tsc --noEmit\r\n\r\n",
+        "durationMs": 6568
+      },
+      {
+        "name": "tests-pass",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": false,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 1,
+        "outputSample": "\r\n\u003E rush-presale@2.0.0 test\r\n\u003E node --import tsx --import ./scripts/load-test-env.ts --experimental-test-coverage --test tests/*.test.ts\r\n\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTryOnAsset.deleteMany(\r\nAuthentication failed against database server, the provided database credentials for \u0060rush_presale_local\u0060 are not valid.\r\n\r\nPlease make sure to provide valid database credentials for the database server at the configured address.\r\n\u25B6 local-only API integration: checkout, webhooks, cron, admin auth and try-on\r\n  \u2716 terms checkbox is enforced server-side and closed presale refuses checkout (116.1966ms)\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTryOnAsset.deleteMany(\r\nAuthentication failed against database server, the provided database credentials for \u0060rush_presale_local\u0060 are not valid.\r\n\r\nPlease make sure to provide valid database credentials for the database server at the configured address.\r\n  \u2716 paid count changes only after signed local webhook; calendar expiry is correct (153.912ms)\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTryOnAsset.deleteMany(\r\nAuthentication failed against database server, the provided database credentials for \u0060rush_presale_local\u0060 are not valid.\r\n\r\nPlease make sure to provide valid database credentials for the database server at the configured address.\r\n  \u2716 threshold notification is once-only while orders remain open at 15, 16 and 17 of 15 (51.2802ms)\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTryOnAsset.deleteMany(\r\nAuthentication failed against database server, the provided database credentials for \u0060rush_presale_local\u0060 are not valid.\r\n\r\nPlease make sure to provide valid database credentials for the database server at the configured address.\r\n  \u2716 invalid webhook signature rejected and duplicate valid event is idempotent (50.4862ms)\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTryOnAsset.deleteMany(\r\nAuthentication failed against database server, the provided database credentials for \u0060rush_presale_local\u0060 are not valid.\r\n\r\nPlease make sure to provide valid database credentials for the database server at the configured address.\r\n  \u2716 failed-payment and expired-checkout webhook events transition pending orders (47.1004ms)\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTryOnAsset.deleteMany(\r\nAuthentication failed against database server, the provided database credentials for \u0060rush_presale_local\u0060 are not valid.\r\n\r\nPlease make sure to provide valid database credentials for the database server at the configured address.\r\n  \u2716 cron sends one warning, refunds expired orders once and skips started production (45.6304ms)\r\nprisma:error \r\nInvalid \u0060prisma.temporaryTryOnAsset.deleteMany()\u0060 invocation in\r\nC:\\Users\\utente\\Downloads\\rush-presale\\rush-presale\\tests\\api.integration.test.ts:27:36\r\n\r\n  24 });\r\n  25 \r\n  26 async function clearState() {\r\n\u2192 27   await prisma.temporaryTr\n\u2026[truncated]",
+        "durationMs": 3538,
+        "testResults": {
+          "testFramework": "unknown",
+          "runnerDetectedFrom": "none",
+          "testsTotal": 0,
+          "testsPassed": 0,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": true
+        }
+      },
+      {
+        "name": "home-route-200",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!DOCTYPE html\u003E\u003Chtml lang=\u0022it\u0022 data-scroll-behavior=\u0022smooth\u0022\u003E\u003Chead\u003E\u003Cmeta charSet=\u0022utf-8\u0022/\u003E\u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022image\u0022 imageSrcSet=\u0022/_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=640\u0026amp;q=75 640w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=750\u0026amp;q=75 750w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=828\u0026amp;q=75 828w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=1080\u0026amp;q=75 1080w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=1200\u0026amp;q=75 1200w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=1920\u0026amp;q=75 1920w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=2048\u0026amp;q=75 2048w, /_next/image?url=%2Fassets%2Flogo.png\u0026amp;w=3840\u0026amp;q=75 3840w\u0022 imageSizes=\u0022(max-width: 760px) 74vw, 590px\u0022/\u003E\u003Clink rel=\u0022stylesheet\u0022 href=\u0022/_next/static/chunks/app_globals_0yg4wg8plh8sv.css\u0022 data-precedence=\u0022next_static/chunks/app_globals_0yg4wg8plh8sv.css\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022script\u0022 fetchPriority=\u0022low\u0022 href=\u0022/_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_0qva5cupmdgep._.js\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/1daa_next_dist_compiled_react-dom_cjs_react-dom-client_development_0mp0cp_t-ezj9.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/1q96_modules_next_dist_compiled_react-dom_cjs_react-dom_development_1sqry0_53krp4.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_react-dom_0grqycjrj6mju._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-67asdr9._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_next-devtools_index_090k2jmam7qwg.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_compiled_1amofcmz--cdp._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_client_1wygxxh5rwq0t._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_05y3oi5z9mc_3._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_%40swc_helpers_cjs_1r9vbqwj2323d._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_1anvha4rlo79g._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/turbopack-_06rkbud3pyrlm._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/_219uq1sj0q91c._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_20wefz_f1k6jn._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_1n264217k-0rt._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/components_HomeHero_tsx_0q7tjib1tiujo._.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cmeta name=\u0022theme-color\u0022 content=\u0022#0A0A0A\u0022/\u003E\u003Ctitle\u003ERUSH \u2014 PRE-SALE\u003C/title\u003E\u003Cmeta name=\u0022description\u0022 content=\u0022La PRE-SALE ufficiale RUSH. LICK ME HARD. LICK ME RUSH.\u0022/\u003E\u003Cmeta name=\u0022robots\u0022 content=\u0022index, follow\u0022/\u003E\u003Clink rel=\u0022icon\u0022 href=\u0022/assets/logo.png\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/node_modules_next_dist_build_polyfills_polyfill-nomodule.js\u0022 noModule=\u0022\u0022\u003E\u003C/script\u003E\u003C/head\u003E\u003Cbody\u003E\u003Cdiv hidden=\u0022\u0022\u003E\u003C!--$--\u003E\u003C!--/$--\u003E\u003C/div\u003E\u003Cdiv class=\u0022site-shell\u0022\u003E\u003Cmain class=\u0022hero grain\u0022\u003E\u003Cdiv class=\u0022hero-backdrop\u0022\u003E\u003Cimg alt=\u0022\u0022 loading=\u0022lazy\u0022 decoding=\u0022async\u0022 data-nimg=\u0022fill\u0022 style=\u0022position:absolute;height:100%;width:100%;left:0;top:0;right:0;bottom:0;color:transparent\u0022 sizes=\u0022100vw\u0022 srcSet=\u0022/_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=640\u0026amp;q=75 640w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=750\u0026amp;q=75 750w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=828\u0026amp;q=75 828w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=1080\u0026amp;q=75 1080w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=1200\u0026amp;q=75 1200w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=1920\u0026amp;q=75 1920w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=2048\u0026amp;q=75 2048w, /_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=3840\u0026amp;q=75 3840w\u0022 src=\u0022/_next/image?url=%2Fassets%2Fmockup-retro.png\u0026amp;w=3840\u0026amp;q=75\u0022/\u003E\u003C/div\u003E\u003Cdiv class=\u0022hero-vignette\u0022\u003E\u003C/div\u003E\u003Cdiv class=\u0022ember-field\u0022 aria-hidden=\u0022true\u0022\u003E\u003Ci style=\u0022left:9%;--duration:6s;--delay:0s;--drift:-8px\u0022\u003E\u003C/i\u003E\n\u2026[truncated]",
+        "durationMs": 7764
+      }
+    ],
+    "executions": [
+      {
+        "source": "setup[0]",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "ci"
+        ],
+        "cwd": "C:\\Users\\utente\\Downloads\\rush-presale\\rush-presale",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "setup[1]",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "db:generate"
+        ],
+        "cwd": "C:\\Users\\utente\\Downloads\\rush-presale\\rush-presale",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "lint-no-emit",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "lint"
+        ],
+        "cwd": "C:\\Users\\utente\\Downloads\\rush-presale\\rush-presale",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "tests-pass",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "test"
+        ],
+        "cwd": "C:\\Users\\utente\\Downloads\\rush-presale\\rush-presale",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "home-route-200",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "dev",
+          "--",
+          "--hostname",
+          "127.0.0.1",
+          "--port",
+          "3197"
+        ],
+        "cwd": "C:\\Users\\utente\\Downloads\\rush-presale\\rush-presale",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      }
+    ]
+  }
+}

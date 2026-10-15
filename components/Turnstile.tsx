@@ -17,6 +17,7 @@ export function Turnstile({ onToken, resetKey = 0 }: { onToken: (token: string) 
   const widget = useRef<string | undefined>(undefined);
   const [scriptReady, setScriptReady] = useState(false);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const testMode = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_RUSH_TEST_MODE === '1';
   const handleReady = useCallback(() => setScriptReady(true), []);
 
   useEffect(() => {
@@ -32,6 +33,9 @@ export function Turnstile({ onToken, resetKey = 0 }: { onToken: (token: string) 
     };
   }, [onToken, resetKey, scriptReady, siteKey]);
 
+  if (testMode) {
+    return <button type="button" className="turnstile-test" onClick={() => onToken('test-pass')}>VERIFICA ANTI-BOT (TEST)</button>;
+  }
   if (!siteKey) return <p className="error-box">Configura Turnstile per abilitare il pagamento.</p>;
   return (
     <div className="turnstile-slot">

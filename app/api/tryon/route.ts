@@ -8,6 +8,7 @@ import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { uploadTemporaryAsset, deleteTemporaryAsset } from '@/lib/storage';
 import { FalFashnProvider } from '@/lib/tryon-provider';
+import { isMockRuntime } from '@/lib/mock-runtime';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -102,16 +103,19 @@ export async function POST(request: Request) {
       update: {}
     });
     if (!current.tryOnEnabled) return NextResponse.json({ error: 'La prova virtuale non è al momento disponibile.' }, { status: 503 });
+    const mockProvider = isMockRuntime() && process.env.TRYON_PROVIDER === 'mock';
     const apiKey = process.env.FAL_KEY;
     const storageConfigured = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-    if (!apiKey || !storageConfigured) return NextResponse.json({ error: 'Il servizio prova virtuale non è configurato.' }, { status: 503 });
+    if (!mockProvider && (!apiKey || !storageConfigured)) {
+      return NextResponse.json({ error: 'Il servizio prova virtuale non è configurato.' }, { status: 503 });
+    }
 
     const maxSpend = Number(process.env.TRYON_MAX_DAILY_SPEND_USD ?? 5);
     const cost = Number(process.env.TRYON_COST_ESTIMATE_USD ?? 0.075);
     if (!Number.isFinite(cost) || cost <= 0 || !Number.isFinite(maxSpend) || maxSpend <= 0) {
       throw new Error('Configurazione budget try-on non valida.');
     }
-    reservedCost = cost * 2;
+    reservedCost = mockProvider ? 0 : cost * 2;
     const spendReset = new Date();
     spendReset.setUTCHours(0, 0, 0, 0);
     reservationDay = spendReset;
@@ -142,12 +146,30 @@ export async function POST(request: Request) {
     });
     jobId = job.id;
 
+    if (mockProvider) {
+      providerStarted = true;
+      if (process.env.MOCK_TRYON_FAIL === '1') throw new Error('Errore simulato del provider try-on.');
+      const mockImage = Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="800"><rect width="100%" height="100%" fill="#101010"/><path d="M180 180h280l70 100-70 60v300H180V340l-70-60z" fill="#c00000"/><text x="320" y="390" fill="white" font-family="Arial" font-size="52" font-weight="bold" text-anchor="middle">RUSH</text><text x="320" y="740" fill="#ddd" font-family="Arial" font-size="24" text-anchor="middle">ANTEPRIMA TEST</text></svg>'
+      );
+      const result = await sharp(mockImage).webp().toBuffer();
+      await prisma.tryOnJob.update({
+        where: { id: job.id },
+        data: { status: 'SUCCEEDED', durationMs: Date.now() - startedAt }
+      });
+      return NextResponse.json({
+        imageDataUrl: `data:image/webp;base64,${result.toString('base64')}`,
+        expiresAt: new Date(Date.now() + Number(process.env.TRYON_RESULT_TTL_SECONDS ?? 300) * 1000).toISOString()
+      }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+
     const normalized = await sharp(raw, { failOn: 'error' }).rotate().resize({ width: 1600, height: 2000, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 88 }).toBuffer();
     sourcePath = `input/${randomUUID()}.jpg`;
     const sourceUrl = await uploadTemporaryAsset(sourcePath, normalized, 'image/jpeg', new Date(Date.now() + 10 * 60_000));
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!siteUrl) throw new Error('URL pubblico non configurato.');
+    if (!apiKey) throw new Error('Chiave del provider try-on non configurata.');
     const garmentUrl = `${siteUrl.replace(/\/$/, '')}/assets/mockup-fronte.png`;
     const provider = new FalFashnProvider(apiKey, process.env.TRYON_MODEL_ID);
     providerStarted = true;

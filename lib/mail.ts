@@ -1,5 +1,7 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
+import { now } from '@/lib/clock';
+import { isMockRuntime } from '@/lib/mock-runtime';
 
 let resend: Resend | undefined;
 
@@ -31,24 +33,32 @@ export async function deliverPendingEmails(batchSize = 25) {
   let delivered = 0;
 
   for (const message of pending) {
+    const claimed = await prisma.emailOutbox.updateMany({
+      where: { id: message.id, sentAt: null, attempts: message.attempts },
+      data: { attempts: { increment: 1 } }
+    });
+    if (claimed.count !== 1) continue;
     try {
-      const result = await client().emails.send({
-        from: process.env.MAIL_FROM ?? '',
-        to: message.to,
-        subject: message.subject,
-        text: message.text
-      });
-      if (result.error) throw new Error(result.error.message);
+      if (isMockRuntime() && process.env.EMAIL_PROVIDER === 'console') {
+        console.info(`[EMAIL MOCK] ${message.subject} -> ${message.to}`);
+      } else {
+        const result = await client().emails.send({
+          from: process.env.MAIL_FROM ?? '',
+          to: message.to,
+          subject: message.subject,
+          text: message.text
+        });
+        if (result.error) throw new Error(result.error.message);
+      }
       await prisma.emailOutbox.update({
         where: { id: message.id },
-        data: { sentAt: new Date(), attempts: { increment: 1 }, lastError: null }
+        data: { sentAt: now(), lastError: null }
       });
       delivered++;
     } catch (error) {
       await prisma.emailOutbox.update({
         where: { id: message.id },
         data: {
-          attempts: { increment: 1 },
           lastError: error instanceof Error ? error.message.slice(0, 500) : 'Errore invio email'
         }
       });

@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
+const previewDeployment = process.env.APP_ENV === 'preview' || process.env.VERCEL_ENV === 'preview';
+
 export const metadata: Metadata = {
   title: 'RUSH — PRE-SALE',
   description: 'La PRE-SALE ufficiale RUSH. LICK ME HARD. LICK ME RUSH.',
   icons: { icon: '/assets/logo.png' },
-  robots: { index: true, follow: true }
+  robots: previewDeployment ? { index: false, follow: false, noarchive: true } : { index: true, follow: true }
 };
 
 export const viewport: Viewport = {

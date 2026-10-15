@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { OrderStatus, PaymentStatus, RefundStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { stripeClient } from '@/lib/stripe';
+import { createRefund } from '@/lib/stripe';
 import { deliverPendingEmails, enqueueEmail } from '@/lib/mail';
 import { hasProductionStarted, settings } from '@/lib/settings';
 import { removeExpiredAssets } from '@/lib/storage';
+import { now as getNow } from '@/lib/clock';
+import { isAutoRefundDue, isExpiryWarningDue } from '@/lib/presale-logic';
+import { claimRefund } from '@/lib/refunds';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300;
@@ -21,7 +24,7 @@ function authorized(request: Request) {
 
 export async function GET(request: Request) {
   if (!authorized(request)) return NextResponse.json({ error: 'Non autorizzato.' }, { status: 401 });
-  const now = new Date();
+  const now = getNow();
   const soon = new Date(now.getTime() + 7 * 86_400_000);
   const current = await settings();
   const stats = { pendingExpired: 0, warnings: 0, refunds: 0, refundErrors: 0, assetsRemoved: 0, emailsDelivered: 0 };
@@ -43,6 +46,7 @@ export async function GET(request: Request) {
         }
       });
       for (const order of warnings) {
+        if (!order.expiresAt || !isExpiryWarningDue(order.expiresAt, now)) continue;
         if (!process.env.ADMIN_EMAIL) continue;
         const claimed = await prisma.order.updateMany({
           where: { id: order.id, expiryWarningSentAt: null },
@@ -66,22 +70,28 @@ export async function GET(request: Request) {
         }
       });
       for (const order of due) {
+        if (!order.expiresAt || !isAutoRefundDue(order.expiresAt, now, false)) continue;
         if (!order.stripePaymentIntentId) {
-          await prisma.order.update({ where: { id: order.id }, data: { refundStatus: RefundStatus.FAILED } });
+          await prisma.order.updateMany({
+            where: { id: order.id, refundStatus: { in: [RefundStatus.NONE, RefundStatus.FAILED] } },
+            data: { refundStatus: RefundStatus.FAILED }
+          });
           stats.refundErrors++;
           continue;
         }
+        const claimedAt = getNow();
+        if (!await claimRefund(order.id, claimedAt)) continue;
         try {
-          await prisma.order.update({ where: { id: order.id }, data: { refundStatus: RefundStatus.PENDING } });
-          await stripeClient().refunds.create(
+          await createRefund(
             { payment_intent: order.stripePaymentIntentId },
             { idempotencyKey: `refund-${order.orderNumber}` }
           );
           await prisma.$transaction(async (tx) => {
-            await tx.order.update({
-              where: { id: order.id },
+            const completed = await tx.order.updateMany({
+              where: { id: order.id, refundStatus: RefundStatus.PENDING, updatedAt: claimedAt },
               data: { refundStatus: RefundStatus.REFUNDED, orderStatus: OrderStatus.REFUNDED, refundedAt: now }
             });
+            if (completed.count !== 1) return;
             await tx.emailOutbox.upsert({
               where: { dedupeKey: `automatic-refund:${order.id}` },
               create: {
@@ -107,14 +117,17 @@ export async function GET(request: Request) {
           });
           stats.refunds++;
         } catch (error) {
-          await prisma.order.update({ where: { id: order.id }, data: { refundStatus: RefundStatus.FAILED } });
+          await prisma.order.updateMany({
+            where: { id: order.id, refundStatus: RefundStatus.PENDING, updatedAt: claimedAt },
+            data: { refundStatus: RefundStatus.FAILED }
+          });
           console.error(`Rimborso automatico ${order.orderNumber} non riuscito`, error);
           stats.refundErrors++;
         }
       }
     }
 
-    const reset = new Date();
+    const reset = new Date(now);
     reset.setUTCHours(0, 0, 0, 0);
     await prisma.settings.updateMany({
       where: { id: 'global', tryOnSpendResetAt: { lt: reset } },

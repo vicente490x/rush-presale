@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { stripeClient } from '@/lib/stripe';
+import { expireCheckoutSession } from '@/lib/stripe';
 
 const schema = z.object({ open: z.boolean() });
 
@@ -20,11 +20,10 @@ export async function POST(request: Request) {
       where: { paymentStatus: 'PENDING', stripeSessionId: { not: null } },
       select: { id: true, stripeSessionId: true }
     });
-    const stripe = stripeClient();
     const failed: string[] = [];
     for (const order of pending) {
       try {
-        const session = await stripe.checkout.sessions.expire(order.stripeSessionId!);
+        const session = await expireCheckoutSession(order.stripeSessionId!);
         if (session.status === 'expired') {
           await prisma.order.updateMany({ where: { id: order.id, paymentStatus: 'PENDING' }, data: { paymentStatus: 'FAILED' } });
         }
