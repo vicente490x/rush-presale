@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Turnstile } from '@/components/Turnstile';
 
-export function AdminLogin() {
+export function AdminLogin({ adminEmail, developmentPasswordActive }: { adminEmail: string; developmentPasswordActive: boolean }) {
   const [token, setToken] = useState('');
   const [challengeReset, setChallengeReset] = useState(0);
   const [error, setError] = useState('');
@@ -15,10 +15,9 @@ export function AdminLogin() {
   const onToken = useCallback((value: string) => setToken(value), []);
 
   useEffect(() => {
-    setLocalDevelopment(
-      process.env.NODE_ENV !== 'production' &&
-      ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
-    );
+    const local = process.env.NODE_ENV !== 'production' &&
+      ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+    setLocalDevelopment(local);
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -30,7 +29,11 @@ export function AdminLogin() {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, turnstileToken: localDevelopment ? 'local-development' : token })
+        body: JSON.stringify({
+          username: new FormData(event.currentTarget).get('username'),
+          password,
+          turnstileToken: localDevelopment ? 'local-development' : token
+        })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Accesso non riuscito.');
@@ -51,7 +54,10 @@ export function AdminLogin() {
       <a href="/" aria-label="Torna a RUSH">RUSH</a>
       <p className="eyebrow">AREA RISERVATA</p>
       <h1>ADMIN</h1>
+      {localDevelopment && developmentPasswordActive && <p className="error-box" role="alert">ATTENZIONE: l’account admin usa ancora la password di sviluppo <strong>admin</strong>. Cambiala prima di esporre il sito.</p>}
       <form onSubmit={submit} className="order-form">
+        <label className="field-label" htmlFor="admin-username">Email amministratore</label>
+        <input className="form-control" id="admin-username" name="username" type="email" autoComplete="username" defaultValue={adminEmail} required />
         <label className="field-label" htmlFor="admin-password">Password</label>
         <input className="form-control" id="admin-password" name="password" type="password" autoComplete="current-password" required />
         {localDevelopment

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { RefundStatus, PaymentStatus, OrderStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { stripeClient } from '@/lib/stripe';
+import { createRefund } from '@/lib/stripe';
 import { enqueueEmail } from '@/lib/mail';
+import { now } from '@/lib/clock';
+import { claimRefund } from '@/lib/refunds';
 
 export const runtime = 'nodejs';
 
@@ -13,14 +15,21 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Ordine pagato rimborsabile non trovato.' }, { status: 404 });
   }
   if (order.refundStatus === RefundStatus.REFUNDED) return NextResponse.json({ error: 'Ordine già rimborsato.' }, { status: 409 });
+  const claimedAt = now();
+  if (!await claimRefund(id, claimedAt)) {
+    return NextResponse.json({ error: 'Rimborso già in corso o ordine non rimborsabile.' }, { status: 409 });
+  }
   try {
-    await prisma.order.update({ where: { id }, data: { refundStatus: RefundStatus.PENDING } });
-    await stripeClient().refunds.create(
+    await createRefund(
       { payment_intent: order.stripePaymentIntentId },
       { idempotencyKey: `refund-${order.orderNumber}` }
     );
     await prisma.$transaction(async (tx) => {
-      await tx.order.update({ where: { id }, data: { refundStatus: RefundStatus.REFUNDED, orderStatus: OrderStatus.REFUNDED, refundedAt: new Date() } });
+      const completed = await tx.order.updateMany({
+        where: { id, refundStatus: RefundStatus.PENDING, updatedAt: claimedAt },
+        data: { refundStatus: RefundStatus.REFUNDED, orderStatus: OrderStatus.REFUNDED, refundedAt: now() }
+      });
+      if (completed.count !== 1) return;
       await tx.emailOutbox.upsert({
         where: { dedupeKey: `manual-refund:${order.id}` },
         create: {
@@ -34,7 +43,10 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    await prisma.order.update({ where: { id }, data: { refundStatus: RefundStatus.FAILED } });
+    await prisma.order.updateMany({
+      where: { id, refundStatus: RefundStatus.PENDING, updatedAt: claimedAt },
+      data: { refundStatus: RefundStatus.FAILED }
+    });
     console.error(`Rimborso ${order.orderNumber} non riuscito`, error);
     return NextResponse.json({ error: 'Rimborso non riuscito. Controlla Stripe e riprova.' }, { status: 502 });
   }

@@ -13,7 +13,8 @@ export function publicConfig() {
     PRESALE_MAX_QUANTITY: process.env.PRESALE_MAX_QUANTITY ?? '5'
   });
   const url = new URL(parsed.NEXT_PUBLIC_SITE_URL);
-  if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+  if ((process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production' || process.env.APP_ENV === 'preview') &&
+    url.protocol !== 'https:') {
     throw new Error('NEXT_PUBLIC_SITE_URL deve essere HTTPS in produzione.');
   }
   return parsed;

@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   outputFileTracingRoot: process.cwd(),
   poweredByHeader: false,
   images: {
@@ -10,6 +11,7 @@ const nextConfig: NextConfig = {
     ]
   },
   async headers() {
+    const previewDeployment = process.env.APP_ENV === 'preview' || process.env.VERCEL_ENV === 'preview';
     return [{
       source: '/:path*',
       headers: [
@@ -17,12 +19,16 @@ const nextConfig: NextConfig = {
         { key: 'X-Frame-Options', value: 'DENY' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=()' },
+        ...(previewDeployment ? [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }] : []),
         { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
         {
           key: 'Content-Security-Policy',
           value: `default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://checkout.stripe.com; script-src 'self' 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval' " : ''}https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; upgrade-insecure-requests`
         }
       ]
+    }, {
+      source: '/admin/:path*',
+      headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }]
     }];
   },
   experimental: {

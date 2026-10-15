@@ -1,18 +1,27 @@
 import Link from 'next/link';
+import { settings } from '@/lib/settings';
+import { presaleTermsForThreshold } from '@/lib/presale-terms';
 
 export const metadata = { title: 'PRE-SALE e rimborsi — RUSH' };
+export const dynamic = 'force-dynamic';
 
-export default function RefundPage() {
+export default async function RefundPage() {
+  let terms: ReturnType<typeof presaleTermsForThreshold> | null = null;
+  try {
+    terms = presaleTermsForThreshold((await settings()).threshold);
+  } catch (error) {
+    console.error('Lettura soglia PRE-SALE per la pagina rimborsi non riuscita', error);
+  }
+
   return (
     <main className="legal-page">
       <Link href="/">← RUSH</Link>
       <h1>PRE-SALE E RIMBORSI</h1>
       <h2>ATTENZIONE — PRE-SALE</h2>
-      <p>Questa maglietta viene prodotta esclusivamente al raggiungimento di un minimo di 15 pezzi pre-ordinati.</p>
-      <p>La maglietta non è quindi immediatamente disponibile. Una volta raggiunta la soglia minima, la produzione potrà essere avviata.</p>
-      <p>La consegna avverrà durante una serata RUSH oppure tramite uno dei nostri PR di fiducia.</p>
-      <p>Qualora la produzione non venga avviata entro 2 mesi dalla data del pagamento, l’importo dell’ordine verrà automaticamente rimborsato.</p>
-      <p>Ogni ordine ha una propria scadenza calcolata dalla relativa data di pagamento. Il raggiungimento della soglia non chiude la PRE-SALE: la chiusura è manuale.</p>
+      {terms
+        ? terms.map((term) => <p key={term}>{term}</p>)
+        : <p role="alert">Condizioni PRE-SALE temporaneamente non disponibili. Riprova più tardi.</p>}
+      {terms && <p>Ogni ordine ha una propria scadenza calcolata dalla relativa data di pagamento. Il raggiungimento della soglia non chiude la PRE-SALE: la chiusura è manuale.</p>}
     </main>
   );
 }

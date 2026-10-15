@@ -1,25 +1,15 @@
 import { NextResponse } from 'next/server';
-import { ClothingSize, PaymentStatus, Prisma } from '@prisma/client';
-import { z } from 'zod';
+import { PaymentStatus, Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { publicConfig } from '@/lib/config';
-import { stripeClient } from '@/lib/stripe';
+import { createCheckoutSession, expireCheckoutSession, retrieveCheckoutSession } from '@/lib/stripe';
 import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { now } from '@/lib/clock';
+import { orderSchema } from '@/lib/order-validation';
 
 export const runtime = 'nodejs';
-
-const orderSchema = z.object({
-  firstName: z.string().trim().min(1).max(60),
-  lastName: z.string().trim().min(1).max(60),
-  email: z.string().trim().email().max(120),
-  size: z.nativeEnum(ClothingSize),
-  quantity: z.number().int().min(1).max(100),
-  terms: z.literal(true),
-  turnstileToken: z.string().min(1),
-  website: z.string().max(0).optional()
-});
 
 function orderNumber() {
   return `RUSH-${randomBytes(4).toString('hex').toUpperCase()}`;
@@ -48,8 +38,6 @@ export async function POST(request: Request) {
       update: {}
     });
     if (!current.presaleOpen) return NextResponse.json({ error: 'PRE-SALE CHIUSA' }, { status: 403 });
-    const stripe = stripeClient();
-
     const order = await prisma.order.create({
       data: {
         firstName: parsed.data.firstName.trim(),
@@ -59,12 +47,12 @@ export async function POST(request: Request) {
         size: parsed.data.size,
         quantity: parsed.data.quantity,
         amountCents: parsed.data.quantity * 2500,
-        termsAcceptedAt: new Date()
+        termsAcceptedAt: now()
       }
     });
     try {
       const siteUrl = config.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');
-      const session = await stripe.checkout.sessions.create({
+      const session = await createCheckoutSession({
         mode: 'payment',
         customer_email: order.email,
         line_items: [{
@@ -76,22 +64,23 @@ export async function POST(request: Request) {
           }
         }],
         metadata: { orderId: order.id, orderNumber: order.orderNumber },
+        payment_intent_data: { metadata: { orderId: order.id, orderNumber: order.orderNumber } },
         success_url: `${siteUrl}/conferma?code=${order.orderNumber}`,
         cancel_url: `${siteUrl}/presale?annullato=1`,
-        expires_at: Math.floor(Date.now() / 1000) + 30 * 60
+        expires_at: Math.floor(now().getTime() / 1000) + 30 * 60
       });
       await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: session.id } });
       const latestSettings = await prisma.settings.findUniqueOrThrow({ where: { id: 'global' } });
       if (!latestSettings.presaleOpen) {
         try {
-          const expired = await stripe.checkout.sessions.expire(session.id);
+          const expired = await expireCheckoutSession(session.id);
           if (expired.status === 'expired') {
             await prisma.order.updateMany({ where: { id: order.id, paymentStatus: PaymentStatus.PENDING }, data: { paymentStatus: PaymentStatus.FAILED } });
             return NextResponse.json({ error: 'La PRE-SALE è stata chiusa. Non è stato avviato alcun pagamento.' }, { status: 403 });
           }
         } catch (expireError) {
           try {
-            const latestSession = await stripe.checkout.sessions.retrieve(session.id);
+            const latestSession = await retrieveCheckoutSession(session.id);
             if (latestSession.status === 'complete' && latestSession.payment_status === 'paid') {
               return NextResponse.json({ checkoutUrl: `${siteUrl}/conferma?code=${order.orderNumber}` }, { status: 201 });
             }

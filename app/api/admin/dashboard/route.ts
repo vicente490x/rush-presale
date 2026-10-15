@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ClothingSize } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { paidPieces, settings, hasProductionStarted } from '@/lib/settings';
+import { now } from '@/lib/clock';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,14 +23,14 @@ export async function GET() {
       }),
       prisma.order.count({ where: { paymentStatus: 'PAID', refundStatus: 'FAILED' } })
     ]);
-    const now = new Date();
-    const soon = new Date(now.getTime() + 7 * 86_400_000);
+    const currentTime = now();
+    const soon = new Date(currentTime.getTime() + 7 * 86_400_000);
     const refundableWhere = { paymentStatus: 'PAID' as const, refundStatus: 'NONE' as const, expiresAt: { lte: soon } };
     const [nearExpiry, overdue] = hasProductionStarted(current.productionStatus)
       ? [0, 0]
       : await Promise.all([
-          prisma.order.count({ where: { ...refundableWhere, expiresAt: { gt: now, lte: soon } } }),
-          prisma.order.count({ where: { ...refundableWhere, expiresAt: { lte: now } } })
+          prisma.order.count({ where: { ...refundableWhere, expiresAt: { gt: currentTime, lte: soon } } }),
+          prisma.order.count({ where: { ...refundableWhere, expiresAt: { lte: currentTime } } })
         ]);
     const bySize = Object.fromEntries(Object.values(ClothingSize).map((size) => [size, 0])) as Record<ClothingSize, number>;
     for (const row of sizes) bySize[row.size] = row._sum.quantity ?? 0;

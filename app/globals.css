@@ -209,7 +209,7 @@ button { color: inherit; }
 .tryon-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .tryon-actions button, .tryon-actions a:not(.button-primary) { min-height: 40px; padding: 0 12px; border: 1px solid #4a4a50; background: #171719; color: white; font-size: 11px; text-decoration: none; cursor: pointer; }
 .tryon-actions .button-primary { width: auto; min-height: 40px; padding: 0 14px; }
-.threshold-badge { display: inline-block; padding: 9px 12px; border: 1px solid #9c3030; color: #ffd0d0; font-weight: 800; letter-spacing: .08em; }
+.threshold-badge { display: inline-block; padding: 9px 12px; border: 1px solid #9c3030; color: #ffd0d0; font-weight: 800; letter-spacing: .08em; animation: threshold-pop .45s cubic-bezier(.2,.7,.2,1) both; }
 .size-summary, .tryon-stats { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 12px; }
 .tryon-stats { align-items: center; }
 .tryon-stats strong { width: 100%; }
@@ -226,6 +226,7 @@ button { color: inherit; }
 @keyframes ember-rise { 0% { opacity: 0; transform: translate3d(0,0,0) scale(.6); } 15% { opacity: .8; } 100% { opacity: 0; transform: translate3d(var(--drift, 12px),-55vh,0) scale(.15); } }
 @keyframes smoke-drift { to { transform: scale(1.075) translateY(-1%); } }
 @keyframes grain-shift { 0% { transform: translate(0,0); } 50% { transform: translate(-1%,1%); } 100% { transform: translate(1%,-1%); } }
+@keyframes threshold-pop { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (max-width: 800px) {
   .product-grid { grid-template-columns: 1fr; gap: 14px; }
   .gallery { position: static; }

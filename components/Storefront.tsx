@@ -2,11 +2,12 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ImageGallery } from '@/components/ImageGallery';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { TryOn } from '@/components/TryOn';
 import { Turnstile } from '@/components/Turnstile';
+import { presaleTermsAcceptance, presaleTermsForThreshold } from '@/lib/presale-terms';
 
 type SaleStatus = {
   total: number;
@@ -26,6 +27,8 @@ function euro(cents: number) {
 
 export function Storefront() {
   const [sale, setSale] = useState<SaleStatus>();
+  const [displayTotal, setDisplayTotal] = useState(0);
+  const displayTotalRef = useRef(0);
   const [quantity, setQuantity] = useState(1);
   const [size, setSize] = useState('M');
   const [turnstileToken, setTurnstileToken] = useState('');
@@ -53,6 +56,30 @@ export function Storefront() {
     return () => window.clearInterval(interval);
   }, [load]);
 
+  useEffect(() => {
+    if (!sale) return;
+    const target = sale.total;
+    const from = displayTotalRef.current;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || from === target) {
+      displayTotalRef.current = target;
+      setDisplayTotal(target);
+      return;
+    }
+    let start: number | undefined;
+    let frame = 0;
+    const animate = (timestamp: number) => {
+      start ??= timestamp;
+      const progress = Math.min(1, (timestamp - start) / 650);
+      const eased = 1 - (1 - progress) ** 3;
+      const value = Math.round(from + (target - from) * eased);
+      displayTotalRef.current = value;
+      setDisplayTotal(value);
+      if (progress < 1) frame = window.requestAnimationFrame(animate);
+    };
+    frame = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(frame);
+  }, [sale?.total]);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sale?.open) return setError('La PRE-SALE è chiusa.');
@@ -72,7 +99,7 @@ export function Storefront() {
           quantity,
           terms: form.get('terms') === 'on',
           turnstileToken,
-          website: form.get('website')
+          website: form.get('contactFax') || undefined
         })
       });
       const result = await response.json();
@@ -91,6 +118,7 @@ export function Storefront() {
   }
 
   const threshold = sale?.threshold ?? 15;
+  const terms = presaleTermsForThreshold(threshold);
   const total = sale?.total ?? 0;
   const progress = Math.min(100, total / threshold * 100);
 
@@ -109,10 +137,14 @@ export function Storefront() {
             <p className="price">{euro(sale?.priceCents ?? 2500)}</p>
 
             <section className="counter-card" aria-live="polite">
-              <div className="counter-numbers"><span>{total}</span> / {threshold} <small>PEZZI PRENOTATI</small></div>
-              <div className="progress-track" aria-label={`${Math.round(progress)}% della soglia raggiunto`}>
+              <div className="counter-numbers">
+                <span aria-hidden="true">{displayTotal}</span> / {threshold} <small>PEZZI PRENOTATI</small>
+                <span className="sr-only">Pezzi prenotati: {total} di {threshold}</span>
+              </div>
+              <div className="progress-track" role="progressbar" aria-label="Avanzamento della soglia" aria-valuemin={0} aria-valuemax={threshold} aria-valuenow={Math.min(total, threshold)} aria-valuetext={`${Math.round(progress)}% della soglia raggiunto`}>
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
+              {sale?.thresholdReached && <p className="threshold-badge" role="status">✓ SOGLIA RAGGIUNTA</p>}
               <p className="counter-message">
                 {sale?.thresholdReached
                   ? '✓ SOGLIA RAGGIUNTA — la produzione può partire. La PRE-SALE resta aperta.'
@@ -142,18 +174,16 @@ export function Storefront() {
                 <input className="form-control" name="lastName" autoComplete="family-name" placeholder="Cognome" aria-label="Cognome" maxLength={60} required />
               </div>
               <input className="form-control" name="email" type="email" autoComplete="email" placeholder="Email" aria-label="Email" maxLength={120} required />
-              <input className="sr-only" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+              <input className="sr-only" name="contactFax" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
               <section className="presale-terms">
                 <h2>ATTENZIONE — PRE-SALE</h2>
-                <p>Questa maglietta viene prodotta esclusivamente al raggiungimento di un minimo di 15 pezzi pre-ordinati.</p>
-                <p>La maglietta non è quindi immediatamente disponibile. Una volta raggiunta la soglia minima, la produzione potrà essere avviata.</p>
-                <p>La consegna avverrà durante una serata Rush oppure tramite uno dei nostri PR di fiducia.</p>
-                <p>Qualora la produzione non venga avviata entro 2 mesi dalla data del pagamento, l&apos;importo dell&apos;ordine verrà automaticamente rimborsato.</p>
+                {terms.map((term) => <p key={term}>{term}</p>)}
                 <label className="check-row">
                   <input type="checkbox" name="terms" required />
-                  <span>Ho letto e accetto le condizioni della PRE-SALE e i <Link href="/termini">termini e condizioni</Link>.</span>
+                  <span>{presaleTermsAcceptance}</span>
                 </label>
+                <Link href="/termini">Leggi anche i termini e condizioni</Link>
               </section>
 
               <div className="total-row"><span>Totale</span><strong>{euro((sale?.priceCents ?? 2500) * quantity)}</strong></div>

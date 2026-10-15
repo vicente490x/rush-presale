@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ClothingSize } from '@prisma/client';
 import { publicConfig } from '@/lib/config';
 import { paidPieces, settings } from '@/lib/settings';
+import { isMockRuntime } from '@/lib/mock-runtime';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,10 @@ export async function GET() {
       priceCents: 2500,
       maxQty: config.PRESALE_MAX_QUANTITY,
       sizes: Object.values(ClothingSize),
-      tryOn: current.tryOnEnabled && Boolean(process.env.FAL_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
+      tryOn: current.tryOnEnabled && (
+        (isMockRuntime() && process.env.TRYON_PROVIDER === 'mock') ||
+        Boolean(process.env.FAL_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
+      )
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Lettura stato PRE-SALE non riuscita', error);

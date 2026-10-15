@@ -28,7 +28,7 @@ npm run dev
 - PRE-SALE: http://localhost:3000/presale
 - Admin: http://localhost:3000/admin/login
 
-Configura l’accesso admin locale (la password viene digitata senza echo; password hash e chiave di sessione vengono salvate in `.env.local`):
+Configura o reimposta l’accesso admin locale (la password viene digitata senza echo; il suo hash viene aggiornato nel database e in `.env.local`, insieme alla chiave di sessione):
 
 ```powershell
 npm run admin:setup
