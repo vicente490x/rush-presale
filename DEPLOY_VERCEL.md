@@ -6,7 +6,7 @@ Questa procedura prepara una demo privata con Stripe TEST. Nessun deploy, creazi
 
 Il branch locale è `staging`. Il checkpoint `3b5bc6c` conserva il lavoro preesistente prima delle correzioni. SPEC.md, logo, mockup e stile esistente sono preservati.
 
-Esiste già un remote `origin` su GitHub, senza credenziali incorporate nella URL; proprietà e visibilità non sono state verificate sul servizio. Verificare prima che sia il repository corretto e **privato**. Se ne serve uno nuovo, crearlo nell'account concordato senza sovrascrivere il remote esistente senza autorizzazione. Prima del primo push controllare i file inclusi con `git status --short`, `git diff --cached --stat` e verificare che compaiano soltanto sorgenti e modelli `.env.*.example` senza valori reali. Non aggiungere `.env.local`, database, file credenziali, log o backup.
+Il remote `origin` è `vicente490x/rush-presale` su GitHub, senza credenziali incorporate nella URL. Il 16 ottobre 2026 il connettore GitHub ha confermato visibilità **private**, repository non archiviato e permessi push/admin dell'account collegato. Nessun push eseguito. Se ne serve uno nuovo, crearlo nell'account concordato senza sovrascrivere il remote esistente senza autorizzazione. Prima del primo push controllare i file inclusi con `git status --short`, `git diff --cached --stat` e verificare che compaiano soltanto sorgenti e modelli `.env.*.example` senza valori reali. Non aggiungere `.env.local`, database, file credenziali, log o backup.
 
 Configurare il remote del nuovo repository solo dopo l'autorizzazione del proprietario, quindi pubblicare esclusivamente il branch:
 
@@ -57,6 +57,14 @@ Nel progetto Vercel configurare le seguenti variabili per **Preview**, preferibi
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`: rate limit checkout. Login admin e gate usano il rate limit atomico nel DB.
 
 Usare `.env.staging.example` come checklist. Prezzo, soglia, taglie, quantità, scadenze, preavvisi, destinatari e testi operativi si gestiscono in `/admin/impostazioni` dopo la prima inizializzazione. Non configurare provider AI: la funzione non è prevista da SPEC.md ed è esclusa dalla demo.
+
+Preparare un file locale ignorato `.env.staging.local` dal modello, aggiungere i valori reali e controllarlo prima di caricare le variabili:
+
+```powershell
+npm run staging:check -- --env-file .env.staging.local
+```
+
+Il controllo legge esclusivamente il file indicato, senza ereditare `.env.local` o variabili della shell. Non stampa valori e non contatta servizi, database o destinatari. Segnala campi mancanti, placeholder, URL locali, chiavi live, vecchie opzioni mock, password in chiaro, segreti condivisi e destinatari admin fuori allowlist. Un esito positivo verifica solo il formato: non dimostra validità delle credenziali, separazione del DB, domini autorizzati o recapito email. Hash diversi non dimostrano password diverse; usare il generatore interattivo previsto.
 
 ## 4. Migrazioni e primo avvio
 

@@ -10,6 +10,16 @@ Il candidato locale supera build e verifiche automatizzate eseguite. Restano ess
 
 Nessun pagamento reale è stato abilitato. Nessun deploy pubblico, push remoto, creazione/modifica di account o servizi esterni, migrazione del database applicativo esistente o cancellazione di dati preesistenti è stato eseguito.
 
+### Prosecuzione dopo il checkpoint a054410
+
+Il 16 ottobre 2026, su richiesta di proseguire, il connettore GitHub ha verificato `vicente490x/rush-presale`: repository **privato**, non archiviato, account collegato con permessi push/admin. Nessuna modifica remota effettuata.
+
+La ricerca delle integrazioni ha individuato Vercel disponibile ma **non installato/collegato**; proposta l'integrazione per consentire l'accesso dell'utente. Nessun tool Vercel di elenco progetti o deploy è attualmente disponibile. Nessuna CLI Vercel, GitHub o Stripe rilevata nel PATH; nessun collegamento `.vercel/project.json` presente. L'inventario UI restituisce zero browser: verifica visiva tuttora non eseguita.
+
+Aggiunto `npm run staging:check -- --env-file .env.staging.local`: controllo statico esplicito, senza fallback all'ambiente locale/shell, richieste di rete o stampa di valori. Due test dedicati PASS; lint e typecheck PASS. Eseguito in sola lettura sul preesistente `.env.local`: esito **CONFIGURAZIONE INCOMPLETA**, 28 controlli da risolvere, uscita 1 prevista. Il file resta una configurazione di sviluppo con opzioni mock pregresse, database locale e provider staging incompleti; non è stato modificato. Un eventuale PASS del comando verifica solo il formato, non l'autenticità delle credenziali o la separazione del DB.
+
+I due comandi tsx inizialmente bloccati dal sandbox Windows (`uv_os_get_passwd ENOMEM`) sono stati rieseguiti nel contesto consentito. Nessuna nuova build necessaria per questo script isolato; i risultati della build applicativa e delle suite DB/HTTP sottostanti restano riferiti al checkpoint precedente. Il verdetto resta **NOT READY FOR STAGING** fino al collegamento Vercel, configurazione e prove dei servizi effettivi e verifica browser.
+
 ## Ricognizione e conservazione del lavoro
 
 - Framework effettivo: Next.js **16.4.0**, React/React DOM **19.3.0**, TypeScript **5.9.3**.

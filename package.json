@@ -23,6 +23,7 @@
     "seed:staging": "tsx scripts/seed-staging.ts",
     "test:http": "tsx scripts/test-http.ts",
     "staging:credentials": "tsx scripts/staging-credentials.ts",
+    "staging:check": "tsx scripts/staging-check.ts",
     "db:validate": "tsx scripts/prisma-cli.ts validate",
     "test:migration": "tsx scripts/test-migration.ts"
   },
