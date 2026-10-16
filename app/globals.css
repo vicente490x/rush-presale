@@ -243,3 +243,35 @@ button { color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Back office additions retain the existing RUSH palette and typography. */
+.admin-settings fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.settings-section { padding-block: 26px; border-bottom: 1px solid #303035; scroll-margin-top: 70px; }
+.settings-section p { color: #c7c5c5; line-height: 1.6; }
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; }
+.admin-settings label, .admin-filters label { display: grid; gap: 8px; margin-block: 10px; font-size: 13px; }
+.admin-settings .check-row { display: flex; }
+.admin-settings input:not([type=checkbox]), .admin-settings textarea, .admin-filters select { width: 100%; min-height: 44px; border: 1px solid #414147; border-radius: 3px; background: #101010; color: white; padding: 10px; font: inherit; }
+.admin-settings textarea { resize: vertical; line-height: 1.5; }
+.admin-settings details { padding-block: 10px; }
+.admin-settings summary { cursor: pointer; }
+.admin-settings pre { max-height: 420px; white-space: pre-wrap; overflow: auto; overflow-wrap: anywhere; padding: 12px; background: #111; font-size: 12px; line-height: 1.5; }
+.settings-size { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; padding-block: 8px; }
+.settings-size > strong { min-width: 40px; }
+.settings-size label { display: flex; align-items: center; }
+.settings-size input[type=number] { width: 100px; }
+.settings-section > button, .settings-size > button, .orders-table button { min-height: 40px; padding: 8px 12px; border: 1px solid #4a4a50; background: #171719; color: white; cursor: pointer; }
+.admin-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.admin-filters > input { flex: 1 1 240px; margin-bottom: 10px; }
+.admin-filters select { min-width: 100px; }
+.admin-header { flex-wrap: wrap; }
+.admin-header h1 { font-size: clamp(24px, 5vw, 40px); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+:focus-visible { outline: 2px solid #ff6565; outline-offset: 3px; }
+@media (max-width: 460px) { .confirm-card { padding: 20px 14px; } .order-code { overflow-wrap: anywhere; font-size: 16px; } .admin-wrap { padding-inline: 14px; } }
+
+/* Keep the thin gallery markers while providing usable touch targets. */
+.gallery-controls { gap: 4px; padding: 4px; }
+.gallery-controls button, .gallery-controls button[aria-current="true"] { position: relative; width: 44px; height: 44px; background: transparent; }
+.gallery-controls button::after { content: ''; position: absolute; left: 5px; right: 5px; top: 21px; height: 3px; background: #4c4c4e; }
+.gallery-controls button[aria-current="true"]::after { background: var(--red); }

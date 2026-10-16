@@ -1,25 +1,10 @@
 import { NextResponse } from 'next/server';
+import { adminRoute, readJson } from '@/lib/http';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-
-const schema = z.object({ enabled: z.boolean(), dailyLimit: z.number().int().min(0).max(1000) });
-
-export async function POST(request: Request) {
-  const parsed = schema.safeParse(await request.json());
-  if (!parsed.success) return NextResponse.json({ error: 'Impostazioni prova virtuale non valide.' }, { status: 400 });
-  if (parsed.data.enabled && (
-    !process.env.FAL_KEY ||
-    !process.env.SUPABASE_URL ||
-    !process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    !process.env.TURNSTILE_SECRET_KEY ||
-    !process.env.UPSTASH_REDIS_REST_URL
-  )) {
-    return NextResponse.json({ error: 'Configura provider, storage, Turnstile e rate limiting prima di attivare la prova virtuale.' }, { status: 409 });
-  }
-  await prisma.settings.upsert({
-    where: { id: 'global' },
-    create: { id: 'global', tryOnEnabled: parsed.data.enabled, tryOnDailyLimit: parsed.data.dailyLimit },
-    update: { tryOnEnabled: parsed.data.enabled, tryOnDailyLimit: parsed.data.dailyLimit }
-  });
-  return NextResponse.json({ ok: true });
-}
+export const POST = adminRoute(async (request, _context, actor) => {
+  z.object({ enabled: z.literal(false), dailyLimit: z.number().int().min(0).max(1000).optional() }).strict().parse(await readJson(request));
+  await prisma.settings.update({ where: { id: 'global' }, data: { tryOnEnabled: false } });
+  await prisma.auditLog.create({ data: { actor, action: 'TRYON_DISABLED' } });
+  return NextResponse.json({ ok: true, message: 'Prova AI esclusa dalla demo: non prevista da SPEC.md.' });
+});

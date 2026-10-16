@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ImageGallery } from '@/components/ImageGallery';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { TryOn } from '@/components/TryOn';
@@ -18,6 +18,12 @@ type SaleStatus = {
   maxQty: number;
   sizes: string[];
   tryOn: boolean;
+  termsText: string;
+  termsVersionId: string;
+  termsVersion: number;
+  settingsRevision: number;
+  closedMessage: string;
+  deliveryText: string;
 };
 
 function euro(cents: number) {
@@ -32,6 +38,9 @@ export function Storefront() {
   const [challengeReset, setChallengeReset] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [accepted, setAccepted] = useState(false);
+  const revision = useRef<number | undefined>(undefined);
+  const attempt = useRef<{ fingerprint: string; key: string } | undefined>(undefined);
 
   const onToken = useCallback((token: string) => setTurnstileToken(token), []);
 
@@ -39,10 +48,16 @@ export function Storefront() {
     const response = await fetch('/api/status', { cache: 'no-store' });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? 'Impossibile caricare lo stato PRE-SALE.');
+    if (revision.current !== undefined && revision.current !== result.settingsRevision) setAccepted(false);
+    revision.current = result.settingsRevision;
     setSale(result as SaleStatus);
+    setSize(value => result.sizes.includes(value) ? value : result.sizes[0] ?? '');
+    setQuantity(value => Math.min(value, result.maxQty));
   }, []);
 
   useEffect(() => {
+    // Async polling plus hydration of the existing URL-based size/cancel flow.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Stato PRE-SALE non disponibile.'));
     const interval = window.setInterval(() => {
       load().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Stato PRE-SALE non disponibile.'));
@@ -56,21 +71,25 @@ export function Storefront() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sale?.open) return setError('La PRE-SALE è chiusa.');
+    if (!accepted) return setError('Accetta le condizioni della PRE-SALE.');
     if (!turnstileToken) return setError('Completa la verifica anti-bot.');
     setError('');
     setSubmitting(true);
     const form = new FormData(event.currentTarget);
+    const details = {
+      firstName: String(form.get('firstName') ?? '').trim(), lastName: String(form.get('lastName') ?? '').trim(),
+      email: String(form.get('email') ?? '').trim().toLowerCase(), size, quantity,
+      terms: accepted, termsVersionId: sale.termsVersionId, settingsRevision: sale.settingsRevision
+    };
+    const fingerprint = JSON.stringify(details);
+    if (attempt.current?.fingerprint !== fingerprint) attempt.current = { fingerprint, key: crypto.randomUUID() };
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: form.get('firstName'),
-          lastName: form.get('lastName'),
-          email: form.get('email'),
-          size,
-          quantity,
-          terms: form.get('terms') === 'on',
+          ...details,
+          checkoutKey: attempt.current!.key,
           turnstileToken,
           website: form.get('website')
         })
@@ -106,15 +125,15 @@ export function Storefront() {
           <ScrollReveal className="product-copy">
             <div className="eyebrow">EDIZIONE RUSH · PRE-SALE</div>
             <h1>RUSH<br />T-SHIRT</h1>
-            <p className="price">{euro(sale?.priceCents ?? 2500)}</p>
+            <p className="price">{sale ? euro(sale.priceCents) : 'CARICAMENTO…'}</p>
 
             <section className="counter-card" aria-live="polite">
-              <div className="counter-numbers"><span>{total}</span> / {threshold} <small>PEZZI PRENOTATI</small></div>
+              <div className="counter-numbers"><span>{sale ? total : '—'}</span> / {sale ? threshold : '—'} <small>PEZZI PRENOTATI</small></div>
               <div className="progress-track" aria-label={`${Math.round(progress)}% della soglia raggiunto`}>
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
               <p className="counter-message">
-                {sale?.thresholdReached
+                {!sale ? 'Caricamento dello stato PRE-SALE…' : sale.thresholdReached
                   ? '✓ SOGLIA RAGGIUNTA — la produzione può partire. La PRE-SALE resta aperta.'
                   : `${sale?.missing ?? threshold} ${sale?.missing === 1 ? 'pezzo mancante' : 'pezzi mancanti'} alla soglia minima di produzione.`}
               </p>
@@ -146,23 +165,21 @@ export function Storefront() {
 
               <section className="presale-terms">
                 <h2>ATTENZIONE — PRE-SALE</h2>
-                <p>Questa maglietta viene prodotta esclusivamente al raggiungimento di un minimo di 15 pezzi pre-ordinati.</p>
-                <p>La maglietta non è quindi immediatamente disponibile. Una volta raggiunta la soglia minima, la produzione potrà essere avviata.</p>
-                <p>La consegna avverrà durante una serata Rush oppure tramite uno dei nostri PR di fiducia.</p>
-                <p>Qualora la produzione non venga avviata entro 2 mesi dalla data del pagamento, l&apos;importo dell&apos;ordine verrà automaticamente rimborsato.</p>
+                {sale?.termsText.split('\n\n').slice(1).map((paragraph, i) => <p key={i}>{paragraph}</p>)}
+                {sale && <p className="fine-print">Versione condizioni: {sale.termsVersion}</p>}
                 <label className="check-row">
-                  <input type="checkbox" name="terms" required />
+                  <input type="checkbox" name="terms" checked={accepted} onChange={event => setAccepted(event.target.checked)} disabled={!sale} required />
                   <span>Ho letto e accetto le condizioni della PRE-SALE e i <Link href="/termini">termini e condizioni</Link>.</span>
                 </label>
               </section>
 
-              <div className="total-row"><span>Totale</span><strong>{euro((sale?.priceCents ?? 2500) * quantity)}</strong></div>
+              <div className="total-row"><span>Totale</span><strong>{sale ? euro(sale.priceCents * quantity) : '—'}</strong></div>
               {sale?.open === false ? (
-                <div className="status-closed" role="status">PRE-SALE CHIUSA</div>
+                <div className="status-closed" role="status">{sale.closedMessage}</div>
               ) : (
                 <>
                   <Turnstile onToken={onToken} resetKey={challengeReset} />
-                  <button className="button-primary" type="submit" disabled={submitting || !turnstileToken}>
+                  <button className="button-primary" type="submit" disabled={submitting || !turnstileToken || !accepted || !sale || !sale.sizes.includes(size)}>
                     {submitting ? 'COLLEGAMENTO A STRIPE…' : 'PRE-SALE'}
                   </button>
                 </>
@@ -175,10 +192,10 @@ export function Storefront() {
 
         <section className="how-grid" aria-label="Come funziona la PRE-SALE">
           {[
-            ['01', 'Prenota', '25€ a maglietta. Scegli taglia e quantità.'],
-            ['02', 'Soglia 15', 'Raggiunta la soglia la produzione può partire. La PRE-SALE resta aperta.'],
+            ['01', 'Prenota', `${sale ? euro(sale.priceCents) : 'Caricamento prezzo'} a maglietta. Scegli taglia e quantità.`],
+            ['02', `Soglia ${sale?.threshold ?? '—'}`, 'Raggiunta la soglia la produzione può partire. La PRE-SALE resta aperta.'],
             ['03', 'Produzione', 'Lo stato viene aggiornato dall’amministratore.'],
-            ['04', 'Consegna', 'Durante una serata RUSH o tramite uno dei PR di fiducia.']
+            ['04', 'Consegna', sale?.deliveryText ?? 'Caricamento condizioni di consegna…']
           ].map(([index, title, text]) => (
             <ScrollReveal key={index} className="how-step">
               <div className="how-index">{index} / COME FUNZIONA</div><b>{title}</b><span>{text}</span>

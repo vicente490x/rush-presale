@@ -19,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   const preview = appEnv() !== 'production';
   return (
     <html lang="it" data-scroll-behavior="smooth">
-      <body>{preview && <div role="status" style={{ position: 'sticky', top: 0, zIndex: 1000, padding: '8px 12px', textAlign: 'center', background: '#a51616', color: '#fff', fontWeight: 800, letterSpacing: '.08em' }}>ANTEPRIMA — pagamenti di prova</div>}{children}</body>
+      <body>{preview && <div role="status" style={{ position: 'sticky', top: 0, zIndex: 1000, padding: '8px 12px', textAlign: 'center', background: '#a51616', color: '#fff', fontWeight: 800, letterSpacing: '.08em' }}>ANTEPRIMA — PAGAMENTI DI TEST</div>}{children}</body>
     </html>
   );
 }

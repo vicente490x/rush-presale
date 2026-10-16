@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { adminRoute } from '@/lib/http';
 import { cookieName } from '@/lib/admin-auth';
-
-export async function POST() {
+import { secureCookies } from '@/lib/config';
+export const POST = adminRoute(async () => {
   const response = NextResponse.json({ ok: true });
-  response.cookies.set(cookieName, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'preview', sameSite: 'strict', path: '/', maxAge: 0 });
+  response.cookies.set(cookieName, '', { httpOnly: true, secure: secureCookies(), sameSite: 'strict', path: '/', maxAge: 0 });
   return response;
-}
+});

@@ -3,7 +3,7 @@ import { BrandFooter } from '@/components/BrandFooter';
 
 export const metadata = {
   title: 'PRE-SALE RUSH T-SHIRT — RUSH',
-  description: 'Prenota la maglietta RUSH: 25€, scegli la taglia e sostieni la produzione.'
+  description: 'PRE-SALE della maglietta RUSH: scegli la taglia e sostieni la produzione.'
 };
 
 export default function PresalePage() {

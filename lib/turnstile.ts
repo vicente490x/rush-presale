@@ -9,9 +9,11 @@ export async function verifyTurnstile(token: unknown, remoteIp?: string) {
   const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
     method: 'POST',
     body,
-    cache: 'no-store'
+    cache: 'no-store',
+    signal: AbortSignal.timeout(8000)
   });
   if (!response.ok) throw new Error(`Verifica anti-bot non disponibile (${response.status}).`);
-  const result = (await response.json()) as { success?: boolean };
-  return result.success === true;
+  const result = (await response.json()) as { success?: boolean; hostname?: string };
+  const expected = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').hostname;
+  return result.success === true && result.hostname === expected;
 }

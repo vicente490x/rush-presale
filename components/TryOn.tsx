@@ -1,5 +1,6 @@
 'use client';
 
+
 import Link from 'next/link';
 import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 import { Turnstile } from '@/components/Turnstile';

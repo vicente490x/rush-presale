@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const credentials = z.object({
   ADMIN_EMAIL: z.string().trim().email(),
-  ADMIN_PASSWORD: z.string().min(12).refine((value) => value.toLowerCase() !== 'admin', 'La password non può essere "admin".')
+  ADMIN_PASSWORD: z.string().min(16).refine((value) => Buffer.byteLength(value, 'utf8') <= 72, 'Massimo 72 byte UTF-8.')
 });
 
 async function main() {

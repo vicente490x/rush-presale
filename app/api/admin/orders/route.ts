@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
+import { adminRoute } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
-
+import { orderQuery } from '@/lib/order-query';
 export const dynamic = 'force-dynamic';
-
-export async function GET() {
-  try {
-    const orders = await prisma.order.findMany({ orderBy: { createdAt: 'desc' } });
-    return NextResponse.json(orders, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    console.error('Elenco ordini non disponibile', error);
-    return NextResponse.json({ error: 'Elenco ordini non disponibile.' }, { status: 503 });
-  }
-}
+export const GET = adminRoute(async request => {
+  const { query, where, orderBy } = orderQuery(request);
+  const [total, orders] = await prisma.$transaction([
+    prisma.order.count({ where }),
+    prisma.order.findMany({ where, orderBy, skip: (query.page - 1) * 25, take: 25, include: { refundOperation: true } })
+  ]);
+  return NextResponse.json({ total, page: query.page, pageSize: 25, orders: orders.map(({ checkoutFingerprint: _fingerprint, checkoutKey: _key, ...order }) => order) });
+});

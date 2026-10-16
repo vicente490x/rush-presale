@@ -57,28 +57,42 @@ enum TryOnStatus {
 }
 
 model Order {
-  id                    String         @id @default(cuid())
-  orderNumber           String         @unique
+  id                    String           @id @default(cuid())
+  orderNumber           String           @unique
   firstName             String
   lastName              String
   email                 String
   size                  ClothingSize
   quantity              Int
   amountCents           Int
-  stripeSessionId       String?        @unique
-  stripePaymentIntentId String?        @unique
-  paymentStatus         PaymentStatus  @default(PENDING)
+  stripeSessionId       String?          @unique
+  stripePaymentIntentId String?          @unique
+  paymentStatus         PaymentStatus    @default(PENDING)
   paidAt                DateTime?
   expiresAt             DateTime?
-  orderStatus           OrderStatus    @default(RESERVED)
-  refundStatus          RefundStatus   @default(NONE)
+  orderStatus           OrderStatus      @default(RESERVED)
+  refundStatus          RefundStatus     @default(NONE)
   refundedAt            DateTime?
   confirmationSentAt    DateTime?
   expiryWarningSentAt   DateTime?
-  deliveryStatus        DeliveryStatus @default(DA_CONSEGNARE)
+  deliveryStatus        DeliveryStatus   @default(DA_CONSEGNARE)
   termsAcceptedAt       DateTime
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  unitPriceCents        Int              @default(2500)
+  currency              String           @default("eur")
+  refundMonths          Int              @default(2)
+  warningDays           Int              @default(7)
+  termsVersionId        String?
+  termsVersion          TermsVersion?    @relation(fields: [termsVersionId], references: [id], onDelete: Restrict)
+  termsSnapshot         String?
+  deliveryTextSnapshot  String?
+  checkoutKey           String?          @unique
+  checkoutFingerprint   String?
+  checkoutExpiresAt     DateTime?
+  refundedAmountCents   Int              @default(0)
+  demoSeedId            String?
+  refundOperation       RefundOperation?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
   @@index([paymentStatus, refundStatus])
   @@index([expiresAt, refundStatus])
@@ -86,17 +100,34 @@ model Order {
 }
 
 model Settings {
-  id                   String           @id @default("global")
-  threshold            Int              @default(15)
-  presaleOpen          Boolean          @default(true)
-  productionStatus     ProductionStatus @default(IN_RACCOLTA)
-  thresholdNotifiedAt  DateTime?
-  tryOnEnabled         Boolean          @default(false)
-  tryOnDailyLimit      Int              @default(50)
-  tryOnDailyCount      Int              @default(0)
-  tryOnDailySpendUsd   Decimal          @default(0) @db.Decimal(10, 4)
-  tryOnSpendResetAt    DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  id                    String           @id @default("global")
+  threshold             Int              @default(15)
+  unitPriceCents        Int              @default(2500)
+  currency              String           @default("eur")
+  maintenance           Boolean          @default(false)
+  closedMessage         String           @default("PRE-SALE CHIUSA")
+  maxQuantity           Int              @default(5)
+  maxPerCustomer        Int?
+  sizes                 Json             @default("[{\"size\":\"XS\",\"enabled\":true,\"stock\":null},{\"size\":\"S\",\"enabled\":true,\"stock\":null},{\"size\":\"M\",\"enabled\":true,\"stock\":null},{\"size\":\"L\",\"enabled\":true,\"stock\":null},{\"size\":\"XL\",\"enabled\":true,\"stock\":null},{\"size\":\"XXL\",\"enabled\":true,\"stock\":null}]")
+  refundMonths          Int              @default(2)
+  warningDays           Int              @default(7)
+  productionStartedAt   DateTime?
+  productionCompletedAt DateTime?
+  adminRecipients       Json             @default("[]")
+  emailTemplates        Json             @default("{}")
+  deliveryText          String           @default("La consegna avverrà durante una serata Rush oppure tramite uno dei nostri PR di fiducia.")
+  currentTermsId        String?
+  currentTerms          TermsVersion?    @relation("CurrentTerms", fields: [currentTermsId], references: [id], onDelete: Restrict)
+  revision              Int              @default(1)
+  presaleOpen           Boolean          @default(true)
+  productionStatus      ProductionStatus @default(IN_RACCOLTA)
+  thresholdNotifiedAt   DateTime?
+  tryOnEnabled          Boolean          @default(false)
+  tryOnDailyLimit       Int              @default(50)
+  tryOnDailyCount       Int              @default(0)
+  tryOnDailySpendUsd    Decimal          @default(0) @db.Decimal(10, 4)
+  tryOnSpendResetAt     DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 }
 
 model TryOnJob {
@@ -111,9 +142,19 @@ model TryOnJob {
 }
 
 model StripeWebhookEvent {
-  id         String   @id
-  type       String
+  id          String   @id
+  type        String
   processedAt DateTime @default(now())
+}
+
+model WebhookReceipt {
+  id         String   @id @default(cuid())
+  eventId    String
+  type       String
+  status     String   @default("RECEIVED")
+  receivedAt DateTime @default(now())
+
+  @@index([receivedAt])
 }
 
 model RateLimitEntry {
@@ -133,15 +174,64 @@ model TemporaryTryOnAsset {
 }
 
 model EmailOutbox {
-  id        String   @id @default(cuid())
-  dedupeKey String   @unique
-  to        String
-  subject   String
-  text      String
-  attempts  Int      @default(0)
-  lastError String?
-  createdAt DateTime @default(now())
-  sentAt    DateTime?
+  id             String    @id @default(cuid())
+  dedupeKey      String    @unique
+  to             String
+  subject        String
+  text           String
+  attempts       Int       @default(0)
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  sentAt         DateTime?
+  leaseUntil     DateTime?
+  firstAttemptAt DateTime?
+  providerId     String?
 
   @@index([sentAt, createdAt])
+}
+
+model TermsVersion {
+  id        String     @id @default(cuid())
+  version   Int        @unique
+  text      String
+  createdAt DateTime   @default(now())
+  createdBy String
+  orders    Order[]
+  settings  Settings[] @relation("CurrentTerms")
+}
+
+model RefundOperation {
+  id             String       @id @default(cuid())
+  orderId        String       @unique
+  order          Order        @relation(fields: [orderId], references: [id])
+  idempotencyKey String       @unique
+  stripeRefundId String?      @unique
+  amountCents    Int
+  status         RefundStatus @default(PENDING)
+  automatic      Boolean
+  attempts       Int          @default(0)
+  lastError      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model ApplicationError {
+  id        String   @id @default(cuid())
+  code      String
+  context   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

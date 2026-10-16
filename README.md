@@ -1,79 +1,68 @@
 # RUSH — PRE-SALE
 
-Storefront Next.js per la PRE-SALE RUSH. Prezzo: 25 € a maglietta; la produzione può essere avviata al raggiungimento della soglia configurata. I pagamenti sono gestiti da Stripe Checkout e gli ordini vengono confermati esclusivamente dal webhook Stripe verificato.
+Progetto esistente Next.js 16 / React 19 / Prisma 6 / PostgreSQL. Logo, mockup, home e stile RUSH sono preservati. SPEC.md è la fonte funzionale; AUDIT.md riporta requisito, implementazione, stato iniziale/finale e test.
 
-## Requisiti
+La preparazione riguarda una demo privata con **Stripe esclusivamente TEST**. Le chiavi live sono rifiutate dal codice. Nessun deploy o modifica di servizi esterni è stato eseguito. Leggere il verdetto in [STAGING_REPORT.md](STAGING_REPORT.md) prima di presentare il progetto come pronto.
 
-- Node.js 22 o 24 (vedi `.nvmrc`).
-- PostgreSQL accessibile tramite `DATABASE_URL` e `DIRECT_URL`.
-- Credenziali Stripe, Resend e Upstash Redis per i flussi di vendita e le email.
-- Supabase Storage e fal.ai sono necessari solo se si attiva la prova virtuale.
+## Documentazione
 
-## Avvio locale
+- [AUDIT.md](AUDIT.md): requisiti SPEC e richieste aggiuntive, problemi e verifiche.
+- [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md): repository privato, database separato, credenziali, variabili Preview, protezione, deploy autorizzato e rollback.
+- [STRIPE_SETUP.md](STRIPE_SETUP.md): route reale `/api/stripe/webhook`, eventi test, prova completa e riconciliazione.
+- [STAGING_REPORT.md](STAGING_REPORT.md): risultati effettivi e verifiche ancora da eseguire.
 
-```powershell
-npm install
-.\scripts\setup-local-postgres.ps1
-```
+## Sviluppo locale
 
-Lo script individua PostgreSQL installato in `Program Files`, richiede la password amministrativa senza mostrarla, crea un database e un utente locali dedicati, scrive la connessione in `.env.local` (ignorato da Git) e applica le migrazioni. Non legge, modifica o cancella il precedente database SQLite. In locale `NEXT_PUBLIC_SITE_URL` può essere `http://localhost:3000`; in produzione deve usare HTTPS.
-
-Se Next.js è già in esecuzione, arrestalo con `Ctrl+C` nel terminale che lo ospita e riavvialo:
+Node 22/24 supportati (verificato con Node 24.21.0); PostgreSQL richiesto. Su Windows con restrizioni PowerShell usare `npm.cmd` al posto di `npm`.
 
 ```powershell
+npm ci
 npm run dev
 ```
 
-- Storefront: http://localhost:3000
+Next carica `.env.local`, ignorato da Git. Se manca, partire da `.env.example` e compilare le variabili: non sovrascrivere una configurazione esistente. L'eventuale script `scripts/setup-local-postgres.ps1` modifica un DB locale dedicato e chiede la password PostgreSQL: leggerlo prima di eseguirlo. Non è stato eseguito durante questo audit; i test hanno usato un cluster temporaneo diverso.
+
+Per creare un nuovo admin locale usare `npm run admin:setup` nel proprio terminale: salva hash e segreto in `.env.local` senza mostrarli. Il bypass Turnstile per il solo login admin locale richiede APP_ENV=development, hostname localhost e modalità non-production. Non esiste bypass del pagamento o della firma Stripe. Il checkout richiede sempre configurazione Stripe TEST, Turnstile e Upstash.
+
+- Home: http://localhost:3000
 - PRE-SALE: http://localhost:3000/presale
-- Admin: http://localhost:3000/admin/login
+- Login amministratore: http://localhost:3000/admin/login
+- Dashboard: /admin
+- Impostazioni: /admin/impostazioni
+- Gate staging: /anteprima
 
-Configura l’accesso admin locale (la password viene digitata senza echo; password hash e chiave di sessione vengono salvate in `.env.local`):
+Per generare credenziali staging senza password in chiaro: `npm run staging:credentials`. Usare `.env.staging.example` e la procedura Vercel; non impostare APP_ENV=staging su un database che contiene clienti.
 
-```powershell
-npm run admin:setup
-```
-
-Per l’accesso da `localhost` in modalità sviluppo, il form admin non richiede Turnstile né Upstash. Questo bypass non è attivo in produzione o su hostname diversi da localhost.
-
-## Configurazione servizi
-
-| Variabili | Servizio / uso |
-| --- | --- |
-| `DATABASE_URL`, `DIRECT_URL` | PostgreSQL e migrazioni Prisma |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe Checkout e webhook firmati; usa `sk_test_` finché i pagamenti live non sono autorizzati |
-| `ALLOW_LIVE_PAYMENTS` | Deve rimanere `false` fino ad autorizzazione esplicita dei pagamenti reali |
-| `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_EMAIL` | Outbox e invio email |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Rate limit distribuito |
-| `ADMIN_PASSWORD_HASH`, `SESSION_SECRET` | Accesso amministratore |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Protezione anti-bot dei moduli |
-| `CRON_SECRET` | Autenticazione dei cron job |
-| `FAL_KEY`, `TRYON_MODEL_ID` | Provider commerciale della prova virtuale |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TRYON_BUCKET` | Storage privato temporaneo per le foto della prova virtuale |
-| `TRYON_COST_ESTIMATE_USD`, `TRYON_MAX_DAILY_SPEND_USD`, `TRYON_DAILY_LIMIT` | Stima e limiti di spesa della prova virtuale |
-
-La prova virtuale resta disabilitata finché non viene attivata dal pannello admin. Prima di abilitarla, verifica licenza, prezzo, conservazione e uso delle immagini con fal.ai/FASHN e aggiorna l’informativa privacy: il costo configurato è solo una stima, non una tariffa garantita.
-
-## Stripe
-
-Configura nel Dashboard Stripe il webhook `https://TUODOMINIO/api/stripe/webhook` per `checkout.session.completed` e `checkout.session.expired`, quindi copia il relativo secret in `STRIPE_WEBHOOK_SECRET`. Un ordine diventa pagato esclusivamente dopo la verifica della firma e dell’evento Stripe.
-
-## Verifiche e produzione
+## Verifiche
 
 ```powershell
+npm run db:validate
+npm run db:generate
+npm run typecheck
 npm run lint
 npm test
 npm run build
 ```
 
-Usa un hosting Node compatibile con Next.js e con cron pianificati. `vercel.json` esegue il job amministrativo giornaliero e la pulizia degli asset temporanei ogni cinque minuti; verifica che il piano del provider supporti la frequenza richiesta e configura `CRON_SECRET`. Imposta tutte le variabili d’ambiente nell’hosting, non nel repository.
+`lint` è ESLint (TypeScript/React Hooks), distinto dal typecheck. Postinstall e build generano soltanto Prisma Client: nessuna migrazione o seed automatico.
 
-Le pagine legali contengono ancora campi da completare (ragione sociale, sede, contatti e dettagli verificati sui provider). Devono essere revisionate e completate prima della vendita reale. Non attivare i pagamenti live o la prova AI prima della revisione operativa, contrattuale e legale.
+I test con database richiedono una connessione PostgreSQL temporanea su localhost, con nome `rush_audit*`:
 
-## Logica PRE-SALE
+```powershell
+$env:RUSH_TEST_DATABASE_URL='postgresql://UTENTE@127.0.0.1:PORTA/rush_audit_test'
+npm run test:migration
+npm run test:integration
+npm run test:http
+```
 
-- Il contatore considera i pezzi pagati non rimborsati.
-- Al raggiungimento della soglia viene accodata una notifica admin; la PRE-SALE resta aperta.
-- Chiusura, stati produzione, gestione consegne e rimborsi sono disponibili nell’area admin.
-- Ogni ordine pagato scade due mesi di calendario dopo il pagamento. Se la produzione non è stata avviata, il job pianificato tenta il rimborso Stripe e accoda le notifiche.
-- Foto e risultati della prova AI non sono collegati agli ordini. La foto sorgente viene rimossa dallo storage del sito dopo l’elaborazione o dal job di pulizia alla scadenza.
+Ogni esecuzione crea uno schema nuovo; il DB dell'app non viene usato. Stripe e Resend sono test double dichiarati. La suite HTTP avvia la build di produzione su 127.0.0.1:3100, poi la arresta; richiede la build/origine test descritta in DEPLOY_VERCEL.md. Non equivale al test visivo in un browser o al checkout esterno.
+
+## Logica e limiti
+
+Prezzo iniziale 25 EUR, soglia 15, taglie XS–XXL, durata due mesi calendario e preavviso sette giorni sono default nel DB. Le impostazioni operative si modificano dall'admin. Soglia minima e disponibilità sono indipendenti; superare la soglia non chiude la PRE-SALE.
+
+Il checkout crea prima PENDING e salva uno snapshot di prezzo, quantità, condizioni, consegna e durata. Solo eventi Stripe verificati confermano il pagamento. La pagina di successo legge lo stato. Gli ordini pagati non cambiano quando cambia il listino.
+
+I rimborsi restano PENDING fino a esito Stripe confermato, con chiavi e riconciliazione persistenti. L'avvio produzione ha un timestamp irreversibile e non riapre la condizione di rimborso automatico. I cron staging eseguono dry-run; l'admin può autorizzare esplicitamente un controllo TEST.
+
+Le email non-production sono limitate alla allowlist. La prova AI è esclusa perché non prevista da SPEC.md; il codice precedente è conservato ma non è presentato come attivo nella demo. Le pagine legali contengono ancora dati del venditore da completare prima di qualsiasi attività commerciale. Nessuna autorizzazione a pagamenti reali è implicita in questo lavoro.

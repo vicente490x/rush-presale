@@ -1,25 +1,17 @@
 'use client';
 
 import { FormEvent, useCallback, useState } from 'react';
-import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Turnstile } from '@/components/Turnstile';
 
-export function AdminLogin() {
+export function AdminLogin({ localDevelopment = false }: { localDevelopment?: boolean }) {
   const [token, setToken] = useState('');
   const [challengeReset, setChallengeReset] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [localDevelopment, setLocalDevelopment] = useState(false);
   const router = useRouter();
   const onToken = useCallback((value: string) => setToken(value), []);
-
-  useEffect(() => {
-    setLocalDevelopment(
-      process.env.NODE_ENV !== 'production' &&
-      ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
-    );
-  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,7 +40,7 @@ export function AdminLogin() {
 
   return (
     <main className="confirm-card admin-login">
-      <a href="/" aria-label="Torna a RUSH">RUSH</a>
+      <Link href="/" aria-label="Torna a RUSH">RUSH</Link>
       <p className="eyebrow">AREA RISERVATA</p>
       <h1>ADMIN</h1>
       <form onSubmit={submit} className="order-form">
