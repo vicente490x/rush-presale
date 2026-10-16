@@ -102,6 +102,17 @@ export async function POST(request: Request) {
             data: { paymentStatus: 'FAILED' }
           });
         }
+      } else if (event.type === 'checkout.session.async_payment_failed' || event.type === 'payment_intent.payment_failed') {
+        const object = event.data.object as Stripe.Checkout.Session | Stripe.PaymentIntent;
+        const orderId = 'metadata' in object ? object.metadata?.orderId : undefined;
+        if (orderId) await tx.order.updateMany({ where: { id: orderId, paymentStatus: 'PENDING' }, data: { paymentStatus: 'FAILED' } });
+      } else if (event.type === 'charge.refunded') {
+        const charge = event.data.object as Stripe.Charge;
+        const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+        if (paymentIntentId) await tx.order.updateMany({
+          where: { stripePaymentIntentId: paymentIntentId, refundStatus: { not: 'REFUNDED' } },
+          data: { refundStatus: 'REFUNDED', orderStatus: 'REFUNDED', refundedAt: new Date(event.created * 1000) }
+        });
       }
     });
 

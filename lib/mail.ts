@@ -31,6 +31,13 @@ export async function deliverPendingEmails(batchSize = 25) {
   let delivered = 0;
 
   for (const message of pending) {
+    if (process.env.APP_ENV === 'preview') {
+      const allowlist = (process.env.EMAIL_ALLOWLIST ?? '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean);
+      if (!allowlist.includes(message.to.trim().toLowerCase())) {
+        console.info(`Preview email skipped (not allowlisted): ${message.to}`);
+        continue;
+      }
+    }
     try {
       const result = await client().emails.send({
         from: process.env.MAIL_FROM ?? '',

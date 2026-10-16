@@ -8,6 +8,7 @@ import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { uploadTemporaryAsset, deleteTemporaryAsset } from '@/lib/storage';
 import { FalFashnProvider } from '@/lib/tryon-provider';
+import { appEnv } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -94,6 +95,11 @@ export async function POST(request: Request) {
     const detected = await fileTypeFromBuffer(raw);
     if (!detected || !imageMagic.has(detected.mime) || detected.mime !== file.type) {
       return NextResponse.json({ error: 'Il contenuto del file non corrisponde a un’immagine JPG, PNG o WEBP valida.' }, { status: 400 });
+    }
+
+    if (appEnv() === 'preview') {
+      const mock = await sharp(raw, { failOn: 'error' }).rotate().resize({ width: 1400, height: 1800, fit: 'inside', withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
+      return NextResponse.json({ imageDataUrl: `data:image/webp;base64,${mock.toString('base64')}`, expiresAt: new Date(Date.now() + 300_000).toISOString(), mode: 'MOCK' }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
     const current = await prisma.settings.upsert({

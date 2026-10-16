@@ -6,8 +6,9 @@
     "node": ">=22 <25"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
@@ -15,7 +16,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:dev": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "admin:setup": "tsx scripts/setup-local-admin.ts"
+    "admin:setup": "tsx scripts/setup-local-admin.ts",
+    "create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@fal-ai/client": "^1.6.2",
