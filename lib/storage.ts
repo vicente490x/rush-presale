@@ -13,6 +13,9 @@ function supabase() {
 export async function uploadTemporaryAsset(path: string, body: Buffer, contentType: string, expiresAt: Date) {
   const bucket = process.env.TRYON_BUCKET ?? 'rush-tryon-temp';
   const client = supabase();
+  // Persist cleanup intent before upload so a terminated worker cannot orphan
+  // an uploaded photo between the storage write and the database write.
+  await (await import('@/lib/prisma')).prisma.temporaryTryOnAsset.create({ data: { path, expiresAt } });
   const { error: uploadError } = await client.storage.from(bucket).upload(path, body, {
     contentType,
     upsert: false,
@@ -20,7 +23,6 @@ export async function uploadTemporaryAsset(path: string, body: Buffer, contentTy
   });
   if (uploadError) throw new Error(`Upload temporaneo non riuscito: ${uploadError.message}`);
 
-  await (await import('@/lib/prisma')).prisma.temporaryTryOnAsset.create({ data: { path, expiresAt } });
   const { data, error } = await client.storage.from(bucket).createSignedUrl(path, 600);
   if (error || !data.signedUrl) throw new Error(`URL temporaneo non disponibile: ${error?.message ?? 'errore storage'}`);
   return data.signedUrl;

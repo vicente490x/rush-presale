@@ -43,7 +43,8 @@ export function AdminLogin({ localDevelopment = false }: { localDevelopment?: bo
       <Link href="/" aria-label="Torna a RUSH">RUSH</Link>
       <p className="eyebrow">AREA RISERVATA</p>
       <h1>ADMIN</h1>
-      <form onSubmit={submit} className="order-form">
+      <noscript><p className="error-box">JavaScript è necessario per accedere. Abilitalo prima di inserire la password.</p></noscript>
+      <form method="post" action="/api/admin/login" onSubmit={submit} className="order-form">
         <label className="field-label" htmlFor="admin-password">Password</label>
         <input className="form-control" id="admin-password" name="password" type="password" autoComplete="current-password" required />
         {localDevelopment

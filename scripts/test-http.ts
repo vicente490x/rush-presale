@@ -14,7 +14,9 @@ async function main() {
   db.searchParams.set('schema', 'http_' + randomBytes(8).toString('hex'));
   const password = randomBytes(24).toString('hex');
   const origin = process.env.RUSH_HTTP_EXPECTED_ORIGIN ?? 'https://rush-staging.example.invalid';
-  const env: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: 'production', APP_ENV: 'staging',
+  // Fully specified fixtures: prevent Next's dotenv expansion of local ADMIN_PASSWORD_HASH
+  // from rewriting the child's bcrypt hash (or loading unrelated local provider keys).
+  const env: NodeJS.ProcessEnv = { ...process.env, __NEXT_PROCESSED_ENV: 'true', NODE_ENV: 'production', APP_ENV: 'staging',
     DATABASE_URL: db.toString(), DIRECT_URL: db.toString(), NEXT_PUBLIC_SITE_URL: origin,
     STAGING_DATABASE_CONFIRMED: 'true', SESSION_SECRET: randomBytes(32).toString('hex'), STAGING_SESSION_SECRET: randomBytes(32).toString('hex'),
     STAGING_PASSWORD_HASH: await bcrypt.hash(password, 12), ADMIN_PASSWORD_HASH: await bcrypt.hash(randomBytes(24).toString('hex'), 12),
@@ -30,7 +32,7 @@ async function main() {
   const { settings } = await import('../lib/settings');
   const { reserveOrder } = await import('../lib/checkout');
   const { initialTerms } = await import('../lib/operational-schema');
-  const { createAdminSession } = await import('../lib/admin-auth');
+  const { createAdminSession, isAdminSession } = await import('../lib/admin-auth');
   mkdirSync('.test-results', { recursive: true });
   const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', '3100'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   let logs = '';
@@ -58,14 +60,46 @@ async function main() {
     const login = await post('/api/staging/login', { password }); const gateHeader = login.headers.get('set-cookie') ?? '';
     check('real staging password login with protected cookie', () => { assert.equal(login.status, 200); assert.match(gateHeader, /HttpOnly/i); assert.match(gateHeader, /Secure/i); assert.match(gateHeader, /SameSite=lax/i); });
     const gate = gateHeader.split(';')[0]; const home = await get('/', gate); const html = await home.text();
+    const gateHtml = await (await get('/anteprima')).text();
+    const adminLoginHtml = await (await get('/admin/login', gate)).text();
+    check('SEC-15 login forms use POST and disclose JavaScript requirement before hydration', () => {
+      for (const [markup, action] of [[gateHtml, '/api/staging/login'], [adminLoginHtml, '/api/admin/login']]) {
+        const form = markup.match(/<form\b[^>]*>/)?.[0] ?? '';
+        assert.ok(form.includes('method="post"')); assert.ok(form.includes(`action="${action}"`));
+        assert.ok(markup.includes('<noscript>')); assert.ok(markup.includes('JavaScript'));
+      }
+    });
     check('public home branding, noindex and banner after gate', () => { assert.equal(home.status, 200); assert.ok(html.includes('PRE-SALE')); assert.ok(html.includes('PAGAMENTI DI TEST')); assert.ok(home.headers.get('x-robots-tag')?.includes('noindex')); assert.ok(home.headers.get('content-security-policy')?.includes("frame-ancestors 'none'")); });
     const presale = await get('/presale', gate); check('presale SSR responds', () => assert.equal(presale.status, 200));
+    check('SEC-04 fresh CSP nonce matches every inline script and responses cannot be cached', () => {
+      const csp = home.headers.get('content-security-policy') ?? '';
+      const nonce = csp.match(/'nonce-([^']+)'/)?.[1]; assert.ok(nonce);
+      const scriptPolicy = csp.split(';').find(value => value.trim().startsWith('script-src '))!;
+      assert.ok(!scriptPolicy.includes('unsafe-inline')); assert.ok(!scriptPolicy.includes('unsafe-eval'));
+      for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+        if (match[2].trim()) assert.ok(match[1].includes(`nonce="${nonce}"`), 'inline script must have matching nonce');
+      }
+      assert.notEqual(presale.headers.get('content-security-policy')?.match(/'nonce-([^']+)'/)?.[1], nonce);
+      assert.ok(home.headers.get('cache-control')?.includes('no-store'));
+      assert.equal(home.headers.get('referrer-policy'), 'no-referrer');
+    });
     for (const path of ['/privacy', '/cookie', '/termini', '/rimborsi']) assert.equal((await get(path, gate)).status, 200, path);
     const logo = await get('/_next/image?url=%2Fassets%2Flogo.png&w=640&q=75', gate); check('Next image optimizer serves brand asset behind gate', () => { assert.equal(logo.status, 200); assert.ok(logo.headers.get('content-type')?.startsWith('image/')); });
+    for (const url of ['/api/admin/orders', 'https://untrusted.supabase.co/storage/v1/object/sign/test.png']) {
+      assert.equal((await get('/_next/image?url=' + encodeURIComponent(url) + '&w=640&q=75')).status, 400);
+    }
+    check('SEC-07 optimizer rejects internal API and remote storage URLs', () => {});
+    for (const path of ['/admin', '/api/admin/export']) {
+      const attempt = await fetch(base + path, { redirect: 'manual', headers: { 'x-middleware-subrequest': 'proxy:proxy:proxy:proxy:proxy' } });
+      assert.ok([307, 401].includes(attempt.status));
+    }
+    check('framework subrequest header cannot bypass staging/admin protection', () => {});
     assert.equal((await get('/api/admin/settings', gate)).status, 401);
     assert.equal((await get('/admin', gate)).status, 307);
-    const cookie = gate + '; rush_admin_session=' + await createAdminSession();
-    const adminPage = await get('/admin', cookie); check('server-protected admin renders', () => assert.equal(adminPage.status, 200));
+    const adminToken = await createAdminSession();
+    assert.equal(await isAdminSession(adminToken), true, 'fixture session is valid in test process');
+    const cookie = gate + '; rush_admin_session=' + adminToken;
+    const adminPage = await get('/admin', cookie); check('server-protected admin renders', () => assert.equal(adminPage.status, 200, 'admin redirect: ' + adminPage.headers.get('location')));
     assert.equal((await get('/admin/impostazioni', cookie)).status, 200);
     const response = await get('/api/admin/settings', cookie); const data = await response.json();
     const keys = ['revision', 'threshold', 'unitPriceCents', 'currency', 'maintenance', 'closedMessage', 'maxQuantity', 'maxPerCustomer', 'sizes', 'refundMonths', 'warningDays', 'adminRecipients', 'emailTemplates', 'deliveryText'];
@@ -98,6 +132,9 @@ async function main() {
     assert.equal((await (await get('/api/status', gate)).json()).open, false);
     const diag = await (await get('/api/admin/diagnostics', cookie)).json(); check('diagnostics has DB/webhook status without secrets', () => { assert.equal(diag.database, 'CONNECTED'); assert.equal(diag.lastWebhook.id, event.id); assert.equal(diag.lastReceipt.status, 'DUPLICATE'); assert.ok(!JSON.stringify(diag).includes(env.STRIPE_WEBHOOK_SECRET!)); });
     const logout = await post('/api/admin/logout', {}, cookie); check('logout clears session cookie', () => { assert.equal(logout.status, 200); assert.match(logout.headers.get('set-cookie') ?? '', /Max-Age=0/i); });
+    assert.equal((await get('/api/admin/export', cookie)).status, 401);
+    assert.equal((await get('/admin', cookie)).status, 307);
+    check('SEC-02 copied session rejected after logout', () => {});
     const report = { checks, result: 'PASS', scope: 'Production Next server over local HTTP; generated signed Stripe fixtures; no external API calls; no browser rendering', visualBrowser: 'NOT EXECUTED — no connected browser', createdAt: new Date().toISOString() };
     writeFileSync('.test-results/http-report.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report));
   } finally { server.kill(); writeFileSync('.test-results/http-server.log', logs); await prisma.$disconnect(); }

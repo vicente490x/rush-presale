@@ -14,7 +14,18 @@ export async function refundState(stripe: Stripe, paymentIntent: string) {
 }
 export async function applyRefunds(tx: Prisma.TransactionClient, orderId: string, refunds: Stripe.Refund[]) {
   const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
+  if (order.paymentStatus !== 'PAID' || !order.stripePaymentIntentId) throw new DomainError('Pagamento non ancora associato: ritentare la riconciliazione.');
+  const ids = new Set<string>();
+  for (const refund of refunds) {
+    const intent = typeof refund.payment_intent === 'string' ? refund.payment_intent : refund.payment_intent?.id;
+    if (!refund.id || ids.has(refund.id) || intent !== order.stripePaymentIntentId || refund.currency !== order.currency ||
+        !Number.isSafeInteger(refund.amount) || refund.amount <= 0 || refund.amount > order.amountCents) {
+      throw new DomainError('Rimborso incoerente con il pagamento dell’ordine.');
+    }
+    ids.add(refund.id);
+  }
   const succeeded = refunds.filter(r => r.status === 'succeeded').reduce((sum, r) => sum + r.amount, 0);
+  if (succeeded > order.amountCents) throw new DomainError('Totale rimborsi incoerente con ordine.');
   const total = Math.max(order.refundedAmountCents, succeeded);
   const full = total >= order.amountCents;
   const pending = refunds.some(r => r.status === 'pending' || r.status === 'requires_action');

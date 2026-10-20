@@ -9,11 +9,13 @@ import { verifyTurnstile } from '@/lib/turnstile';
 import { uploadTemporaryAsset, deleteTemporaryAsset } from '@/lib/storage';
 import { FalFashnProvider } from '@/lib/tryon-provider';
 import { appEnv } from '@/lib/config';
+import { assertSameOrigin, readFormData } from '@/lib/http';
+import { DomainError } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-const consentSchema = z.object({ consent: z.literal('true'), adult: z.literal('true'), turnstileToken: z.string().min(1) });
+const consentSchema = z.object({ consent: z.literal('true'), adult: z.literal('true'), turnstileToken: z.string().min(1).max(4096) });
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const imageMagic = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const maxResultBytes = 12 * 1024 * 1024;
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
   const startedAt = Date.now();
 
   try {
+    assertSameOrigin(request);
     const rate = await enforceRateLimit(ip, 'tryon', 5, '1 h');
     if (!rate.success) return NextResponse.json({ error: 'Hai raggiunto il limite di 5 prove in un’ora.' }, { status: 429 });
     const contentLength = Number(request.headers.get('content-length'));
@@ -76,7 +79,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'La richiesta supera la dimensione massima consentita.' }, { status: 413 });
     }
 
-    const form = await request.formData();
+    const form = await readFormData(request, 9 * 1024 * 1024);
     const consent = consentSchema.safeParse({
       consent: form.get('consent'),
       adult: form.get('adult'),
@@ -145,7 +148,7 @@ export async function POST(request: Request) {
     });
     jobId = job.id;
 
-    const normalized = await sharp(raw, { failOn: 'error' }).rotate().resize({ width: 1600, height: 2000, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 88 }).toBuffer();
+    const normalized = await sharp(raw, { failOn: 'error', limitInputPixels: 25_000_000 }).rotate().resize({ width: 1600, height: 2000, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 88 }).toBuffer();
     sourcePath = `input/${randomUUID()}.jpg`;
     const sourceUrl = await uploadTemporaryAsset(sourcePath, normalized, 'image/jpeg', new Date(Date.now() + 10 * 60_000));
 
@@ -176,7 +179,7 @@ export async function POST(request: Request) {
 
     await deleteTemporaryAsset(sourcePath);
     sourcePath = undefined;
-    const result = await sharp(output, { failOn: 'error' })
+    const result = await sharp(output, { failOn: 'error', limitInputPixels: 25_000_000 })
       .rotate()
       .resize({ width: 1400, height: 1800, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 82 })
@@ -200,17 +203,18 @@ export async function POST(request: Request) {
             data: { tryOnDailyCount: { decrement: 1 }, tryOnDailySpendUsd: { decrement: reservedCost } }
           });
         }
-      }).catch((updateError: unknown) => console.error('Aggiornamento statistiche try-on non riuscito', updateError));
+      }).catch(() => console.error('TRYON_STATS_UPDATE_FAILED'));
       if (!providerStarted) {
         reservedCost = 0;
       }
     }
-    console.error('Generazione try-on non riuscita', error);
+    if (error instanceof DomainError) return NextResponse.json({ error: error.message }, { status: error.status });
+    console.error('TRYON_GENERATION_FAILED');
     const status = /limite giornaliero/.test(message) ? 429 : 502;
     return NextResponse.json({
       error: status === 429 ? message : 'Non è stato possibile generare l’anteprima. Prova un’altra foto o continua senza la prova virtuale.'
     }, { status });
   } finally {
-    if (sourcePath) await deleteTemporaryAsset(sourcePath).catch((error: unknown) => console.error('Pulizia immagine di input non riuscita', error));
+    if (sourcePath) await deleteTemporaryAsset(sourcePath).catch(() => console.error('TRYON_ASSET_CLEANUP_FAILED'));
   }
 }

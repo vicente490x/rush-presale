@@ -30,7 +30,16 @@ export function stagingProblems(env: Environment): string[] {
       url.pathname === '/' && !url.search && !url.hash;
   } catch { /* Report a fixed message without the supplied URL. */ }
   require(origin, 'NEXT_PUBLIC_SITE_URL: configurare la vera origine HTTPS staging.');
-  for (const key of ['DATABASE_URL', 'DIRECT_URL']) require(remoteUrl(env[key], ['postgres:', 'postgresql:']), `${key}: serve un database PostgreSQL staging remoto, senza placeholder.`);
+  for (const key of ['DATABASE_URL', 'DIRECT_URL']) {
+    require(remoteUrl(env[key], ['postgres:', 'postgresql:']), `${key}: serve un database PostgreSQL staging remoto, senza placeholder.`);
+    let tls = false;
+    try {
+      const params = new URL(env[key] ?? '').searchParams;
+      tls = params.getAll('sslmode').length === 1 && params.get('sslmode') === 'require' &&
+        params.getAll('sslaccept').length === 1 && params.get('sslaccept') === 'strict' && !params.has('host');
+    } catch { /* Fixed message only; never disclose a connection URL. */ }
+    require(tls, `${key}: richiedere TLS e certificato valido con sslmode=require e sslaccept=strict (Prisma 6); verificare CA e hostname sul provider.`);
+  }
   require(env.STAGING_DATABASE_CONFIRMED === 'true', 'STAGING_DATABASE_CONFIRMED: confermare solo dopo verifica del database separato.');
   require(configured(env.STRIPE_SECRET_KEY) && /^sk_test_[A-Za-z0-9]{24,}$/.test(env.STRIPE_SECRET_KEY ?? ''), 'STRIPE_SECRET_KEY: inserire una chiave TEST effettiva.');
   require(configured(env.STRIPE_WEBHOOK_SECRET) && /^whsec_[A-Za-z0-9]{24,}$/.test(env.STRIPE_WEBHOOK_SECRET ?? ''), 'STRIPE_WEBHOOK_SECRET: configurare il segreto del webhook TEST di questo staging.');

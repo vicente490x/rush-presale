@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   try {
     const removed = await removeExpiredAssets();
     await prisma.rateLimitEntry.deleteMany({ where: { resetAt: { lt: new Date(Date.now() - 86400000) } } });
+    await prisma.adminSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
     return NextResponse.json({ removed });
   } catch { return NextResponse.json({ error: 'Pulizia non completata.' }, { status: 500 }); }
 }

@@ -38,7 +38,15 @@ export function AdminDashboard() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Operazione non riuscita.'); await load().catch(() => undefined); } finally { setBusy(false); }
   }
   function filter(event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) { setFilters(v => ({ ...v, [event.target.name]: event.target.value, page: 1 })); }
-  async function logout() { await action('/api/admin/logout', {}); router.replace('/admin/login'); router.refresh(); }
+  async function logout() {
+    setBusy(true); setError('');
+    try {
+      const response = await fetch('/api/admin/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Uscita non completata. Riprova per invalidare la sessione.');
+      router.replace('/admin/login'); router.refresh();
+    } catch (e) { setError(e instanceof Error ? e.message : 'Uscita non completata.'); }
+    finally { setBusy(false); }
+  }
   const next = dashboard?.productionStartedAt ? dashboard.production === 'PRODUZIONE_AVVIATA' ? 'PRODUZIONE_COMPLETATA' : null : 'PRODUZIONE_AVVIATA';
   return <main className="admin-wrap">
     <header className="admin-header"><div><p className="eyebrow">RUSH · BACK OFFICE</p><h1>PRE-SALE ADMIN</h1></div><nav className="admin-actions"><Link href="/admin/impostazioni">IMPOSTAZIONI</Link><button onClick={logout} disabled={busy}>ESCI</button></nav></header>

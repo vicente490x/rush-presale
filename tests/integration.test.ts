@@ -16,7 +16,7 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   const { createAdminSession, isAdminSession } = await import('../lib/admin-auth');
   const { createStagingSession, isStagingSession } = await import('../lib/staging-auth');
   let calls = 0;
-  let refundMode: 'pending' | 'succeeded' | 'failed' | 'timeout' = 'pending';
+  let refundMode: 'pending' | 'succeeded' | 'failed' | 'timeout' | 'accepted-timeout' = 'pending';
   let refundList: Stripe.Refund[] = [];
   const stripe = {
     refunds: {
@@ -24,8 +24,10 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
       create: async (params: Stripe.RefundCreateParams) => {
         calls++;
         if (refundMode === 'timeout') throw new Error('Provider timeout');
-        const refund = { id: 're_' + randomUUID(), status: refundMode, amount: params.amount!, metadata: params.metadata } as Stripe.Refund;
-        refundList.push(refund); return refund;
+        const refund = { id: 're_' + randomUUID(), status: refundMode === 'accepted-timeout' ? 'succeeded' : refundMode, amount: params.amount!, metadata: params.metadata, payment_intent: params.payment_intent, currency: 'eur' } as Stripe.Refund;
+        refundList.push(refund);
+        if (refundMode === 'accepted-timeout') throw new Error('Connection lost after provider accepted refund');
+        return refund;
       }
     }, checkout: { sessions: {
       create: async (params: Stripe.Checkout.SessionCreateParams) => ({ id: 'cs_' + params.metadata!.orderId, status: 'open', url: 'https://checkout.stripe.com/test', ...params }),
@@ -100,7 +102,9 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   await reset();
   await t.test('9 invalid Stripe signature rejected by actual route', async () => {
     const { POST } = await import('../app/api/stripe/webhook/route');
+    const errorsBefore = await prisma.applicationError.count();
     const response = await POST(new Request('http://localhost/api/stripe/webhook', { method: 'POST', headers: { 'stripe-signature': 'invalid' }, body: '{}' })); assert.equal(response.status, 400);
+    assert.equal(await prisma.applicationError.count(), errorsBefore);
   });
   await t.test('10 closed presale and 11 maintenance reject checkout', async () => {
     await prisma.settings.update({ where: { id: 'global' }, data: { presaleOpen: false } }); await assert.rejects(reserveOrder(await input()), /CHIUSA/);
@@ -192,11 +196,11 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   await reset();
   await t.test('partial external refund does not remove whole quantity; stale events cannot undo full refund', async () => {
     const { order } = await paid();
-    refundList = [{ id: 're_partial', amount: 1000, status: 'succeeded' } as Stripe.Refund];
+    refundList = [{ id: 're_partial', amount: 1000, status: 'succeeded', payment_intent: order.stripePaymentIntentId, currency: 'eur' } as Stripe.Refund];
     const event = { id: 'evt_partial', type: 'charge.refunded', livemode: false, data: { object: { payment_intent: order.stripePaymentIntentId } } } as unknown as Stripe.Event;
     await processStripeEvent(event, stripe); assert.equal(await paidPieces(), 1);
     assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundedAmountCents, 1000);
-    refundList.push({ id: 're_rest', amount: 1500, status: 'succeeded' } as Stripe.Refund);
+    refundList.push({ id: 're_rest', amount: 1500, status: 'succeeded', payment_intent: order.stripePaymentIntentId, currency: 'eur' } as Stripe.Refund);
     await processStripeEvent({ ...event, id: 'evt_full' }, stripe); assert.equal(await paidPieces(), 0);
     refundList = []; await processStripeEvent({ ...event, id: 'evt_old' }, stripe);
     assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundStatus, 'REFUNDED');
@@ -223,7 +227,7 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   });
   await t.test('each admin handler independently rejects an unsigned request', async () => {
     for (const [path, method] of [
-      ['dashboard', 'GET'], ['diagnostics', 'GET'], ['expiry', 'GET'], ['export', 'GET'], ['orders', 'GET'],
+      ['dashboard', 'GET'], ['diagnostics', 'GET'], ['diagnostics', 'POST'], ['expiry', 'GET'], ['expiry', 'POST'], ['export', 'GET'], ['orders', 'GET'], ['settings', 'GET'], ['settings', 'POST'],
       ['presale', 'POST'], ['production', 'POST'], ['settings/tryon', 'POST'], ['orders/[id]/delivery', 'POST'], ['orders/[id]/refund', 'POST'], ['logout', 'POST']
     ]) {
       const module = await import('../app/api/admin/' + path + '/route');
@@ -238,6 +242,121 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     refundMode = 'succeeded'; await requestRefund(order.id, false, 'test-admin', stripe); assert.equal((await settings()).productionStatus, 'IN_RACCOLTA');
     await paid(); assert.equal((await settings()).productionStatus, 'SOGLIA_RAGGIUNTA');
     assert.equal(await prisma.emailOutbox.count({ where: { dedupeKey: { startsWith: 'threshold:' } } }), 1);
+  });
+  await reset();
+  await t.test('SEC-02 logout revokes copied tokens, sessions are unique and password rotation invalidates them', async () => {
+    const { POST } = await import('../app/api/admin/logout/route');
+    const a = await createAdminSession(); const b = await createAdminSession();
+    assert.notEqual(a, b);
+    const response = await POST(new Request('http://localhost:3000/api/admin/logout', { method: 'POST', headers: { origin: 'http://localhost:3000', cookie: 'rush_admin_session=' + a } }), undefined);
+    assert.equal(response.status, 200);
+    assert.equal(await isAdminSession(a), false);
+    assert.equal(await isAdminSession(b), true);
+    const original = process.env.ADMIN_PASSWORD_HASH;
+    process.env.ADMIN_PASSWORD_HASH = 'rotated-fixture-hash';
+    assert.equal(await isAdminSession(b), false);
+    if (original === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = original;
+    const gate = await createStagingSession(); const oldGate = process.env.STAGING_PASSWORD_HASH;
+    process.env.STAGING_PASSWORD_HASH = 'rotated-gate-fixture-hash';
+    assert.equal(await isStagingSession(gate), false);
+    if (oldGate === undefined) delete process.env.STAGING_PASSWORD_HASH; else process.env.STAGING_PASSWORD_HASH = oldGate;
+  });
+  await reset();
+  await t.test('SEC-03 mismatched, duplicate and excessive refund results roll back financial state', async () => {
+    const { order } = await paid();
+    const event = { id: 'evt_refund_validation', type: 'charge.refunded', livemode: false, data: { object: { payment_intent: order.stripePaymentIntentId } } } as unknown as Stripe.Event;
+    const valid = { id: 're_validation', amount: 1000, status: 'succeeded', payment_intent: order.stripePaymentIntentId, currency: 'eur' } as Stripe.Refund;
+    for (const invalid of [[{ ...valid, payment_intent: 'pi_unrelated' }], [{ ...valid, currency: 'usd' }], [valid, valid], [{ ...valid, amount: 3000 }], [valid, { ...valid, id: 're_second', amount: 2000 }]]) {
+      refundList = invalid;
+      await assert.rejects(processStripeEvent(event, stripe), /incoerente/);
+      assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundedAmountCents, 0);
+      assert.equal(await prisma.stripeWebhookEvent.count({ where: { id: event.id } }), 0);
+    }
+  });
+  await reset();
+  await t.test('SEC-03 refund-before-payment is retriable and metadata cannot rebind an unrelated payment', async () => {
+    const order = await reserveOrder(await input());
+    const pi = 'pi_early_' + order.id;
+    const event = { id: 'evt_early_refund', type: 'refund.created', livemode: false, data: { object: { payment_intent: pi } } } as unknown as Stripe.Event;
+    const service = { ...stripe, paymentIntents: { retrieve: async () => ({ metadata: { orderId: order.id } }) } } as unknown as Stripe;
+    refundList = [{ id: 're_early', amount: 2500, status: 'succeeded', payment_intent: pi, currency: 'eur' } as Stripe.Refund];
+    await assert.rejects(processStripeEvent(event, service), /non ancora associato/);
+    assert.equal(await prisma.stripeWebhookEvent.count({ where: { id: event.id } }), 0);
+    const payment = { id: 'evt_early_payment', created: Math.floor(Date.now() / 1000), type: 'checkout.session.completed', livemode: false,
+      data: { object: { id: 'cs_early', mode: 'payment', payment_status: 'paid', amount_total: 2500, currency: 'eur', payment_intent: pi, metadata: { orderId: order.id } } } } as unknown as Stripe.Event;
+    await processStripeEvent(payment, service); await processStripeEvent(event, service);
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundStatus, 'REFUNDED');
+    await assert.rejects(processStripeEvent({ ...event, id: 'evt_unrelated', data: { object: { payment_intent: 'pi_unrelated' } } } as unknown as Stripe.Event, service), /incoerente/);
+  });
+  await t.test('SEC-06 rate limit increments atomically and rejects attempts beyond the budget', async () => {
+    const { databaseRateLimit } = await import('../lib/db-ratelimit');
+    const results = await Promise.all(Array.from({ length: 12 }, () => databaseRateLimit('synthetic-client', 'security-' + process.pid, 5, 60000)));
+    assert.equal(results.filter(Boolean).length, 5);
+  });
+  await reset();
+  await t.test('two distinct paid events concurrently confirm exactly two orders and emails', async () => {
+    const results = await Promise.all([paid({ email: 'first@example.com' }), paid({ email: 'second@example.com' })]);
+    assert.notEqual(results[0].order.id, results[1].order.id);
+    assert.equal(await paidPieces(), 2);
+    assert.equal(await prisma.order.count({ where: { paymentStatus: 'PAID' } }), 2);
+    assert.equal(await prisma.emailOutbox.count({ where: { dedupeKey: { startsWith: 'order-confirmation:' } } }), 2);
+  });
+  await reset();
+  await t.test('accepted refund followed by network timeout reconciles without a second create', async () => {
+    const { order } = await paid();
+    refundMode = 'accepted-timeout';
+    await assert.rejects(requestRefund(order.id, false, 'test-admin', stripe), /Connection lost/);
+    assert.equal(calls, 1);
+    refundMode = 'succeeded';
+    await requestRefund(order.id, false, 'test-admin', stripe);
+    assert.equal(calls, 1);
+    assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundStatus, 'REFUNDED');
+  });
+  await reset();
+  await t.test('delivery rejects an order made ineligible by an overlapping refund transaction', async () => {
+    const { POST } = await import('../app/api/admin/orders/[id]/delivery/route');
+    const { lockSettings } = await import('../lib/db-lock');
+    const { order } = await paid();
+    const token = await createAdminSession();
+    let release!: () => void;
+    let acquired!: () => void;
+    const locked = new Promise<void>(resolve => { acquired = resolve; });
+    const proceed = new Promise<void>(resolve => { release = resolve; });
+    const transaction = prisma.$transaction(async tx => {
+      await lockSettings(tx); acquired(); await proceed;
+      await tx.order.update({ where: { id: order.id }, data: { refundStatus: 'PENDING' } });
+    });
+    await locked;
+    const delivery = POST(new Request('http://localhost:3000/api/admin/orders/' + order.id + '/delivery', {
+      method: 'POST', headers: { origin: 'http://localhost:3000', cookie: 'rush_admin_session=' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'CONSEGNATA' })
+    }), { params: Promise.resolve({ id: order.id }) });
+    release(); await transaction;
+    assert.equal((await delivery).status, 409);
+    assert.notEqual((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).deliveryStatus, 'CONSEGNATA');
+  });
+  await t.test('real bcrypt admin login rejects wrong credentials and persists revocable session', async () => {
+    const bcrypt = await import('bcryptjs');
+    const { POST } = await import('../app/api/admin/login/route');
+    const previousHash = process.env.ADMIN_PASSWORD_HASH;
+    process.env.ADMIN_PASSWORD_HASH = await bcrypt.hash('synthetic-local-password', 12);
+    const request = (password: string) => new Request('http://localhost:3000/api/admin/login', {
+      method: 'POST', headers: { origin: 'http://localhost:3000', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, turnstileToken: 'local-test' })
+    });
+    try {
+      assert.equal((await POST(request('wrong'))).status, 401);
+      const response = await POST(request('synthetic-local-password'));
+      assert.equal(response.status, 200);
+      const cookie = response.headers.get('set-cookie') ?? '';
+      assert.match(cookie, /HttpOnly/i); assert.match(cookie, /SameSite=strict/i);
+      const token = cookie.split(';')[0].split('=')[1];
+      assert.equal(await isAdminSession(token), true);
+      for (let i = 0; i < 8; i++) assert.equal((await POST(request('wrong'))).status, 401);
+      assert.equal((await POST(request('synthetic-local-password'))).status, 429);
+    } finally {
+      if (previousHash === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = previousHash;
+    }
   });
   await prisma.$disconnect();
 });

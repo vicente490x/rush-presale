@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { stdin, stdout } from 'node:process';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 async function readHidden(label: string): Promise<string> {
   if (!stdin.isTTY || typeof stdin.setRawMode !== 'function') {
@@ -16,14 +18,17 @@ async function readHidden(label: string): Promise<string> {
     let value = '';
     const finish = (error?: Error) => {
       stdin.off('data', onData);
+      stdin.off('end', onEnd);
       stdin.setRawMode(false);
+      stdin.pause();
       stdout.write('\n');
       if (error) reject(error);
       else resolve(value);
     };
+    const onEnd = () => finish(new Error('Input interrotto: nessuna credenziale salvata.'));
     const onData = (chunk: Buffer) => {
       for (const character of chunk.toString('utf8')) {
-        if (character === '\u0003') {
+        if (['\u0003', '\u0004', '\u001a'].includes(character)) {
           finish(new Error('Configurazione annullata.'));
           return;
         }
@@ -42,14 +47,16 @@ async function readHidden(label: string): Promise<string> {
     };
 
     stdin.on('data', onData);
+    stdin.once('end', onEnd);
   });
 }
 
-function setEnvValue(content: string, name: string, value: string) {
-  const line = `${name}=${value}`;
+export function setEnvValue(content: string, name: string, value: string) {
+  // Next expands $variables even inside quoted dotenv values.
+  const line = `${name}=${value.replace(/\$/g, '\\$')}`;
   const pattern = new RegExp(`^${name}=.*$`, 'm');
   return pattern.test(content)
-    ? content.replace(pattern, line)
+    ? content.replace(pattern, () => line)
     : `${content.trimEnd()}\n${line}\n`;
 }
 
@@ -64,8 +71,8 @@ async function main() {
 
   const password = await readHidden('Nuova password admin (minimo 16 caratteri, input nascosto): ');
   const confirmation = await readHidden('Ripeti la password admin: ');
-  if (password.length < 16 || Buffer.byteLength(password, 'utf8') > 72) {
-    throw new Error(`La password inserita ha ${password.length} caratteri e ${Buffer.byteLength(password, 'utf8')} byte UTF-8. Deve contenere almeno 16 caratteri e non superare 72 byte.`);
+  if (password.length < 16 || Buffer.byteLength(password, 'utf8') > 72 || /\p{Cc}/u.test(password)) {
+    throw new Error('La password deve contenere almeno 16 caratteri, non superare 72 byte UTF-8 e non contenere caratteri di controllo.');
   }
   if (password !== confirmation) {
     throw new Error('Le password non coincidono.');
@@ -81,7 +88,7 @@ async function main() {
   stdout.write('Riavvia il server locale e accedi a http://localhost:3000/admin/login.\n');
 }
 
-main().catch((error: unknown) => {
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) void main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : 'Configurazione admin non riuscita.');
   process.exitCode = 1;
 });

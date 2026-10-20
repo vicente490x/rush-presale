@@ -13,6 +13,13 @@ export async function readJson(request: Request, maxBytes = 32768) {
   const bytes = await readBytes(request, maxBytes);
   try { return JSON.parse(bytes.toString('utf8')) as unknown; } catch { throw new DomainError('JSON non valido.', 400); }
 }
+export async function readFormData(request: Request, maxBytes: number) {
+  const contentType = request.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().startsWith('multipart/form-data;')) throw new DomainError('Formato richiesta non valido.', 400);
+  const bytes = await readBytes(request, maxBytes);
+  try { return await new Response(new Uint8Array(bytes), { headers: { 'Content-Type': contentType } }).formData(); }
+  catch { throw new DomainError('Modulo non valido.', 400); }
+}
 export async function readBytes(request: Request, max: number) {
   if (Number(request.headers.get('content-length')) > max) throw new DomainError('Richiesta troppo grande.', 413);
   const reader = request.body?.getReader();
@@ -40,10 +47,10 @@ export function adminRoute<C>(handler: (request: Request, context: C, actor: str
       response.headers.set('Cache-Control', 'no-store');
       return response;
     } catch (error) {
-      if (error instanceof DomainError) return NextResponse.json({ error: error.message }, { status: error.status });
-      if (error instanceof Error && error.name === 'ZodError') return NextResponse.json({ error: 'Dati non validi. Verifica i campi inseriti.' }, { status: 400 });
+      if (error instanceof DomainError) return NextResponse.json({ error: error.message }, { status: error.status, headers: { 'Cache-Control': 'no-store' } });
+      if (error instanceof Error && error.name === 'ZodError') return NextResponse.json({ error: 'Dati non validi. Verifica i campi inseriti.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
       await logError('ADMIN_OPERATION_FAILED');
-      return NextResponse.json({ error: 'Operazione non disponibile. Consulta la diagnostica.' }, { status: 503 });
+      return NextResponse.json({ error: 'Operazione non disponibile. Consulta la diagnostica.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
     }
   };
 }

@@ -20,7 +20,16 @@ export async function processStripeEvent(event: Stripe.Event, stripe: Stripe) {
       refundOrderId = order?.id;
       if (!refundOrderId) {
         const intent = await stripe.paymentIntents.retrieve(pi);
-        refundOrderId = intent.metadata?.orderId;
+        const candidateId = intent.metadata?.orderId;
+        if (candidateId) {
+          const candidate = await prisma.order.findUnique({ where: { id: candidateId } });
+          if (candidate) {
+            // Do not acknowledge an early refund before the verified payment event.
+            // Metadata alone must never bind a different payment to this order.
+            if (candidate.stripePaymentIntentId !== pi || candidate.paymentStatus !== 'PAID') throw new DomainError('Pagamento non ancora associato o incoerente: riconciliare prima del rimborso.');
+            refundOrderId = candidate.id;
+          }
+        }
       }
       if (refundOrderId) refunds = await refundState(stripe, pi);
     }

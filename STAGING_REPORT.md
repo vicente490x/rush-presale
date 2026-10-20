@@ -1,5 +1,9 @@
 # STAGING REPORT — RUSH PRE-SALE
 
+> Per il candidato corrente e le procedure consolidate usare [STAGING_FINAL_PREPARATION.md](STAGING_FINAL_PREPARATION.md): verifica delle patch, correzione timeout Upstash/form POST, 19 unitari, 35 integrazione, 28 HTTP PASS. Nessun deploy o servizio remoto configurato.
+
+> Audit sicurezza aggiornato al 20 ottobre 2026: [SECURITY_AUDIT.md](SECURITY_AUDIT.md), [test](SECURITY_TEST_RESULTS.md), [checklist](SECURITY_DEPLOY_CHECKLIST.md). Le patch locali passano i test; configurazione e servizi esterni restano da verificare. **SECURITY NOT READY FOR STAGING**. I risultati del 16 ottobre sotto non rappresentano una verifica del deployment.
+
 Data verifiche: **16 ottobre 2026** (Europe/Rome). Branch locale: **staging**. SPEC.md è stato letto integralmente e non modificato. Richieste duplicate nei due allegati: contenuto identico verificato tramite SHA-256.
 
 ## Verdetto

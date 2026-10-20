@@ -1,5 +1,9 @@
 # Preparazione Vercel — staging RUSH
 
+> Procedura consolidata e stato attuale: [STAGING_FINAL_PREPARATION.md](STAGING_FINAL_PREPARATION.md). Il trasferimento del branch può attivare un deploy Git automatico: verificare l'automazione e ottenere autorizzazione prima del push. Il token bypass Vercel ha ambito di progetto, non è tecnicamente ristretto al webhook.
+
+> Aggiornamento del 20 ottobre 2026: seguire anche [SECURITY_DEPLOY_CHECKLIST.md](SECURITY_DEPLOY_CHECKLIST.md). Prima del nuovo codice applicare sul DB staging verificato la migrazione additiva `20261016000200_security_sessions`; tutte le sessioni admin precedenti richiedono nuovo login. Il controllo sessione ora legge il DB e nega l'accesso se indisponibile. Fuori Vercel il rate limit usa un bucket condiviso conservativo. Verdetto corrente: **SECURITY NOT READY FOR STAGING**.
+
 Questa procedura prepara una demo privata con Stripe TEST. Nessun deploy, creazione di servizi, modifica di account o migrazione su database esterni è stato eseguito durante l'audit. Il verdetto e i controlli ancora necessari sono in STAGING_REPORT.md.
 
 ## 1. Repository e branch
@@ -71,12 +75,12 @@ Il controllo legge esclusivamente il file indicato, senza ereditare `.env.local`
 Le migrazioni devono essere applicate **esplicitamente** sul DB staging autorizzato prima di usare il deployment. In una shell con le variabili staging del DB corretto:
 
 ```powershell
-npm run db:validate
+npm.cmd run db:validate -- --env-file .env.staging.local
 npm run db:generate
-npm run db:migrate
+npm.cmd run db:migrate -- --env-file .env.staging.local
 ```
 
-Gli script Prisma caricano `.env.local` come Next, ma le variabili già impostate nella shell hanno precedenza. Verificare quindi che un vecchio `.env.local` di sviluppo non venga usato per sbaglio. Non usare `prisma db push`, `migrate reset`, reset automatici o seed nella build. Su database temporanei i test applicano entrambe le migrazioni in schemi nuovi; non modificano il DB dell'app esistente.
+Con `--env-file`, validate/status/deploy leggono gli URL esclusivamente dal file dedicato, richiedono APP_ENV=staging e STAGING_DATABASE_CONFIRMED=true nel file e non caricano `.env.local`. La modalità senza questo argomento conserva il caricamento locale precedente: non usarla per migrazioni staging. Non usare `prisma db push`, `migrate reset`, reset automatici o seed nella build. I test applicano le tre migrazioni in schemi temporanei nuovi; non modificano il DB dell'app esistente.
 
 L'amministratore è unico e viene identificato da `ADMIN_ID` nel registro operazioni; l'hash resta in ambiente. Non esiste un pulsante di creazione account o una tabella utenti admin da popolare. Il vecchio database SQLite non viene usato.
 

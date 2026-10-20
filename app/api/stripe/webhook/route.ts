@@ -16,7 +16,11 @@ export async function POST(request: Request) {
     const raw = await readBytes(request, 1048576);
     event = stripeClient().webhooks.constructEvent(raw, signature, process.env.STRIPE_WEBHOOK_SECRET);
     if (event.livemode) return NextResponse.json({ error: 'Eventi live non consentiti.' }, { status: 400 });
-  } catch { await logError('STRIPE_WEBHOOK_REJECTED'); return NextResponse.json({ error: 'Firma webhook non valida o Stripe TEST non configurato.' }, { status: 400 }); }
+  } catch {
+    // Unauthenticated traffic must not create persistent database records.
+    console.warn('STRIPE_WEBHOOK_REJECTED');
+    return NextResponse.json({ error: 'Firma webhook non valida o Stripe TEST non configurato.' }, { status: 400 });
+  }
   let receiptId: string | undefined;
   try {
     receiptId = (await prisma.webhookReceipt.create({ data: { eventId: event.id, type: event.type } })).id;

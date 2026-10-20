@@ -4,10 +4,12 @@ import { z } from 'zod';
 import { adminRoute, readJson } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
 import { DomainError } from '@/lib/errors';
+import { lockSettings } from '@/lib/db-lock';
 export const POST = adminRoute(async (request, context: { params: Promise<{ id: string }> }, actor) => {
   const data = z.object({ status: z.nativeEnum(DeliveryStatus) }).strict().parse(await readJson(request));
   const { id } = await context.params;
   await prisma.$transaction(async tx => {
+    await lockSettings(tx);
     const order = await tx.order.findUniqueOrThrow({ where: { id } });
     if (order.paymentStatus !== 'PAID' || order.refundStatus !== 'NONE') throw new DomainError('Consegna modificabile solo per ordini pagati senza rimborso.');
     await tx.order.update({ where: { id }, data: { deliveryStatus: data.status } });

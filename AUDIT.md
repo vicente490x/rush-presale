@@ -1,5 +1,7 @@
 # AUDIT — RUSH PRE-SALE
 
+> Aggiornamento sicurezza del 20 ottobre 2026: [SECURITY_AUDIT.md](SECURITY_AUDIT.md) e [risultati finali](SECURITY_TEST_RESULTS.md) descrivono le patch successive a questo documento. Verdetto attuale: **SECURITY NOT READY FOR STAGING**. Le evidenze del 16 ottobre sotto restano storiche.
+
 Data: 16 ottobre 2026. SPEC.md letto integralmente (sezioni 1–18). Audit iniziale conservato per confronto, seguito dallo stato finale e dalle evidenze delle verifiche locali del 16 ottobre 2026. Le sezioni ripetute 17/18 sono ricondotte ai requisiti atomici seguenti; le estensioni richieste sono separate da SPEC.
 
 ## Ricognizione

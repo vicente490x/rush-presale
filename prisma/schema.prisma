@@ -235,3 +235,13 @@ model ApplicationError {
 
   @@index([createdAt])
 }
+
+model AdminSession {
+  id        String    @id
+  actor     String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt])
+}
