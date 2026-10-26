@@ -94,3 +94,5 @@ Il collegamento Stripe disponibile è il sandbox TEST, non un accesso LIVE. Il d
 - Dati venditore, Stripe LIVE, email con recapito provato e flusso economico completo restano aperti.
 
 Questi riscontri aggiornano le voci precedenti rimaste aperte per assenza di accesso Neon. Il ripristino manuale è ora provato; la continuità dei backup, i privilegi e l’accettazione commerciale richiedono ancora chiusura esplicita.
+
+**Esito finale TLS:** verificato online TLS 1.3 con certificato/hostname validati sia su DATABASE_URL sia su DIRECT_URL. Il punto di verifica del trasporto aperto nelle release precedenti è chiuso; il dato interno del proxy rimane separato. La configurazione staging e le pipeline del codice sono PASS.

@@ -123,3 +123,11 @@ Progetto `holy-bar-39211424` (`rush`), PostgreSQL 18.6. L’identificativo delle
 La chiamata di ripristino ha restituito il nuovo branch in circa 10,7 secondi; prontezza e finalizzazione sono state verificate successivamente. Questo intervallo non è un RTO commerciale misurato.
 
 **Nota di esercizio:** la finalizzazione del ripristino ha riassegnato endpoint e nome del branch originale alla copia. Il branch originale è rimasto conservato. Sono stati corretti nomi e branch predefinito; il confronto completo delle 14 tabelle ha confermato l’assenza di differenze nei dati al controllo. Non è stata eseguita alcuna cancellazione, migrazione o sovrascrittura dei record originali. Per una futura prova esclusivamente isolata usare sempre `finalize: false`, senza branch di destinazione esistente, e verificare gli endpoint prima di ogni eventuale finalizzazione.
+
+## Chiusura verifica TLS 2.1.2
+
+Sul deployment del commit `909c71a` entrambi i controlli client sono PASS: protocollo TLS 1.3, certificato e hostname verificati, database raggiungibile e migrazioni aggiornate. `postgresHopTls=false` resta il dato del backend dietro il proxy e non viene classificato come mancata cifratura del collegamento applicativo.
+
+Pipeline push [40347022194](https://github.com/vicente490x/rush-presale/actions/runs/40347022194) e PR [40347046917](https://github.com/vicente490x/rush-presale/actions/runs/40347046917): completate con successo. Validati lint, TypeScript, build, audit, test unitari (33 PASS), integrazione PostgreSQL (37 casi più contenitore), migrazione, backup/ripristino locale e 33 controlli HTTP. I due nuovi casi TLS passano anche nell’esecuzione locale mirata.
+
+Il collaudo provider ha inoltre confermato Stripe TEST/webhook e Redis; restano aperti recapito Resend, flusso cliente completo e prerequisiti LIVE. Le due azioni rifiutate dal provider — calendario snapshot e modifica autosospensione — sono riportate come non eseguite.
