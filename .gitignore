@@ -1,11 +1,15 @@
 node_modules/
 .next/
-.next-*/
 out/
 coverage/
 .vercel/
 .env*
+!.env.preview.example
 !.env.example
+!.env.staging.example
+prisma/*.db*
+.test-results/
 data/*.db*
 data/backups/
 *.tsbuildinfo
+!.env.production.example

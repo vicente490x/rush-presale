@@ -1,52 +1,94 @@
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
-import { loadEnvConfig } from '@next/env';
 import { randomBytes } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
+import { stdin, stdout } from 'node:process';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
-loadEnvConfig(process.cwd());
+async function readHidden(label: string): Promise<string> {
+  if (!stdin.isTTY || typeof stdin.setRawMode !== 'function') {
+    throw new Error('Esegui questo comando nel terminale interattivo di VS Code.');
+  }
 
-function setEnvValue(content: string, name: string, value: string) {
-  const line = `${name}=${value}`;
+  stdout.write(label);
+  stdin.setRawMode(true);
+  stdin.resume();
+
+  return new Promise((resolve, reject) => {
+    let value = '';
+    const finish = (error?: Error) => {
+      stdin.off('data', onData);
+      stdin.off('end', onEnd);
+      stdin.setRawMode(false);
+      stdin.pause();
+      stdout.write('\n');
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const onEnd = () => finish(new Error('Input interrotto: nessuna credenziale salvata.'));
+    const onData = (chunk: Buffer) => {
+      for (const character of chunk.toString('utf8')) {
+        if (['\u0003', '\u0004', '\u001a'].includes(character)) {
+          finish(new Error('Configurazione annullata.'));
+          return;
+        }
+        if (character === '\r' || character === '\n') {
+          finish();
+          return;
+        }
+        if (character === '\u007f' || character === '\b') {
+          value = value.slice(0, -1);
+          stdout.write('\b \b');
+        } else {
+          value += character;
+          stdout.write('*');
+        }
+      }
+    };
+
+    stdin.on('data', onData);
+    stdin.once('end', onEnd);
+  });
+}
+
+export function setEnvValue(content: string, name: string, value: string) {
+  // Next expands $variables even inside quoted dotenv values.
+  const line = `${name}=${value.replace(/\$/g, '\\$')}`;
   const pattern = new RegExp(`^${name}=.*$`, 'm');
   return pattern.test(content)
-    ? content.replace(pattern, line)
+    ? content.replace(pattern, () => line)
     : `${content.trimEnd()}\n${line}\n`;
 }
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.ADMIN_PASSWORD;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-    !password || password.length < 12 || password.toLowerCase() === 'admin' ||
-    Buffer.byteLength(password, 'utf8') > 72) {
-    throw new Error('Imposta ADMIN_EMAIL valido e ADMIN_PASSWORD di 12-72 byte, diversa da "admin", in .env.local.');
+  const envPath = '.env.local';
+  let content: string;
+  try {
+    content = await readFile(envPath, 'utf8');
+  } catch {
+    throw new Error('.env.local non trovato. Configura prima PostgreSQL locale.');
   }
 
-  const envPath = '.env.local';
-  const content = await readFile(envPath, 'utf8');
-  const passwordHash = await bcrypt.hash(password, 12);
-  const sessionSecret = process.env.SESSION_SECRET && process.env.SESSION_SECRET.length >= 32
-    ? process.env.SESSION_SECRET
-    : randomBytes(48).toString('base64url');
-  const prisma = new PrismaClient();
-  try {
-    await prisma.adminUser.upsert({
-      where: { email },
-      create: { email, passwordHash },
-      update: { passwordHash }
-    });
-    await writeFile(envPath, setEnvValue(content, 'SESSION_SECRET', sessionSecret), {
-      encoding: 'utf8',
-      mode: 0o600
-    });
-  } finally {
-    await prisma.$disconnect();
+  const password = await readHidden('Nuova password admin (minimo 16 caratteri, input nascosto): ');
+  const confirmation = await readHidden('Ripeti la password admin: ');
+  if (password.length < 16 || Buffer.byteLength(password, 'utf8') > 72 || /\p{Cc}/u.test(password)) {
+    throw new Error('La password deve contenere almeno 16 caratteri, non superare 72 byte UTF-8 e non contenere caratteri di controllo.');
   }
-  console.info(`Account admin configurato per ${email}. La password non è stata stampata.`);
+  if (password !== confirmation) {
+    throw new Error('Le password non coincidono.');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const sessionSecret = randomBytes(32).toString('base64url');
+  content = setEnvValue(content, 'ADMIN_PASSWORD_HASH', passwordHash);
+  content = setEnvValue(content, 'SESSION_SECRET', sessionSecret);
+  await writeFile(envPath, content, { encoding: 'utf8', mode: 0o600 });
+
+  stdout.write('Credenziali admin salvate in .env.local. I segreti non sono stati mostrati.\n');
+  stdout.write('Riavvia il server locale e accedi a http://localhost:3000/admin/login.\n');
 }
 
-main().catch((error: unknown) => {
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) void main().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : 'Configurazione admin non riuscita.');
   process.exitCode = 1;
 });

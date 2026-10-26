@@ -31,7 +31,7 @@ export function HomeHero() {
       </div>
       <motion.div
         className="hero-content"
-        initial={reduceMotion ? false : { opacity: 0, scale: 0.94, y: 12 }}
+        initial={false}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.9, ease: [0.2, 0.7, 0.2, 1] }}
       >

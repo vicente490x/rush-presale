@@ -1,24 +1,17 @@
 'use client';
 
 import { FormEvent, useCallback, useState } from 'react';
-import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Turnstile } from '@/components/Turnstile';
 
-export function AdminLogin({ adminEmail, developmentPasswordActive }: { adminEmail: string; developmentPasswordActive: boolean }) {
+export function AdminLogin({ localDevelopment = false }: { localDevelopment?: boolean }) {
   const [token, setToken] = useState('');
   const [challengeReset, setChallengeReset] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [localDevelopment, setLocalDevelopment] = useState(false);
   const router = useRouter();
   const onToken = useCallback((value: string) => setToken(value), []);
-
-  useEffect(() => {
-    const local = process.env.NODE_ENV !== 'production' &&
-      ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-    setLocalDevelopment(local);
-  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,11 +22,7 @@ export function AdminLogin({ adminEmail, developmentPasswordActive }: { adminEma
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: new FormData(event.currentTarget).get('username'),
-          password,
-          turnstileToken: localDevelopment ? 'local-development' : token
-        })
+        body: JSON.stringify({ password, turnstileToken: localDevelopment ? 'local-development' : token })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Accesso non riuscito.');
@@ -51,13 +40,11 @@ export function AdminLogin({ adminEmail, developmentPasswordActive }: { adminEma
 
   return (
     <main className="confirm-card admin-login">
-      <a href="/" aria-label="Torna a RUSH">RUSH</a>
+      <Link href="/" aria-label="Torna a RUSH">RUSH</Link>
       <p className="eyebrow">AREA RISERVATA</p>
       <h1>ADMIN</h1>
-      {localDevelopment && developmentPasswordActive && <p className="error-box" role="alert">ATTENZIONE: l’account admin usa ancora la password di sviluppo <strong>admin</strong>. Cambiala prima di esporre il sito.</p>}
-      <form onSubmit={submit} className="order-form">
-        <label className="field-label" htmlFor="admin-username">Email amministratore</label>
-        <input className="form-control" id="admin-username" name="username" type="email" autoComplete="username" defaultValue={adminEmail} required />
+      <noscript><p className="error-box">JavaScript è necessario per accedere. Abilitalo prima di inserire la password.</p></noscript>
+      <form method="post" action="/api/admin/login" onSubmit={submit} className="order-form">
         <label className="field-label" htmlFor="admin-password">Password</label>
         <input className="form-control" id="admin-password" name="password" type="password" autoComplete="current-password" required />
         {localDevelopment

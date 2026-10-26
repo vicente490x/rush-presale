@@ -1,8 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 
 const images = [
   { src: '/assets/mockup-fronte.png', alt: 'Maglietta RUSH vista frontale durante uno shooting notturno in un campo in fiamme.' },
@@ -11,9 +11,12 @@ const images = [
 ];
 
 export function ImageGallery() {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const reduceMotion = useReducedMotion();
   const [selected, setSelected] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [touchStart, setTouchStart] = useState<number>();
+  useEffect(() => { if (zoomed) dialog.current?.showModal(); }, [zoomed]);
 
   return (
     <div className="gallery">
@@ -37,7 +40,7 @@ export function ImageGallery() {
           <motion.div
             className={images[selected].detail ? 'gallery-image-detail' : undefined}
             key={selected}
-            initial={{ opacity: 0, rotateY: selected === 0 ? -16 : 16 }}
+            initial={reduceMotion ? false : { opacity: 0, rotateY: selected === 0 ? -16 : 16 }}
             animate={{ opacity: 1, rotateY: 0 }}
             transition={{ duration: 0.42, ease: 'easeOut' }}
             style={{ transformStyle: 'preserve-3d' }}
@@ -67,16 +70,17 @@ export function ImageGallery() {
       </div>
       <p className="gallery-caption">{selected === 0 ? 'VISTA FRONTALE' : selected === 1 ? 'VISTA POSTERIORE' : 'DETTAGLIO STAMPA 3D'} · TOCCA PER INGRANDIRE</p>
       {zoomed && (
-        <div
-          role="dialog"
+        <dialog
+          ref={dialog}
+          onCancel={() => setZoomed(false)}
           aria-modal="true"
           aria-label="Immagine ingrandita della maglietta"
           onClick={() => setZoomed(false)}
-          style={{ position: 'fixed', zIndex: 20, inset: 0, display: 'grid', placeItems: 'center', padding: 14, background: 'rgba(0,0,0,.94)', cursor: 'zoom-out' }}
+          style={{ position: 'fixed', zIndex: 1100, inset: 0, width: '100vw', height: '100dvh', maxWidth: '100vw', maxHeight: '100dvh', margin: 0, border: 0, display: 'grid', placeItems: 'center', padding: 14, background: 'rgba(0,0,0,.94)', cursor: 'zoom-out' }}
         >
           <button type="button" onClick={() => setZoomed(false)} aria-label="Chiudi ingrandimento" style={{ position: 'absolute', top: 20, right: 22, border: 0, background: 'transparent', color: 'white', fontSize: 30 }}>×</button>
           <Image src={images[selected].src} alt={images[selected].alt} width={1200} height={1800} sizes="100vw" style={{ width: 'auto', maxWidth: '100%', height: 'auto', maxHeight: '94vh', objectFit: 'contain' }} />
-        </div>
+        </dialog>
       )}
     </div>
   );

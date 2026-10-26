@@ -1,31 +1,19 @@
 import { NextResponse } from 'next/server';
-import { ClothingSize } from '@prisma/client';
-import { publicConfig } from '@/lib/config';
 import { paidPieces, settings } from '@/lib/settings';
-import { isMockRuntime } from '@/lib/mock-runtime';
-
+import { prisma } from '@/lib/prisma';
+import { sizesSchema } from '@/lib/operational-schema';
 export const dynamic = 'force-dynamic';
-
 export async function GET() {
   try {
-    const [config, current, total] = await Promise.all([Promise.resolve(publicConfig()), settings(), paidPieces()]);
-    return NextResponse.json({
-      total,
-      threshold: current.threshold || config.PRESALE_THRESHOLD,
-      missing: Math.max(0, current.threshold - total),
-      thresholdReached: total >= current.threshold,
-      open: current.presaleOpen,
-      production: current.productionStatus,
-      priceCents: 2500,
-      maxQty: config.PRESALE_MAX_QUANTITY,
-      sizes: Object.values(ClothingSize),
-      tryOn: current.tryOnEnabled && (
-        (isMockRuntime() && process.env.TRYON_PROVIDER === 'mock') ||
-        Boolean(process.env.FAL_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
-      )
+    const [current, total] = await Promise.all([settings(), paidPieces()]);
+    const terms = await prisma.termsVersion.findUniqueOrThrow({ where: { id: current.currentTermsId! } });
+    return NextResponse.json({ total, threshold: current.threshold, missing: Math.max(0, current.threshold - total),
+      thresholdReached: total >= current.threshold, open: current.presaleOpen && !current.maintenance,
+      maintenance: current.maintenance, closedMessage: current.maintenance ? 'Servizio in manutenzione. Riprova più tardi.' : current.closedMessage,
+      production: current.productionStatus, priceCents: current.unitPriceCents, maxQty: current.maxQuantity,
+      sizes: sizesSchema.parse(current.sizes).filter(row => row.enabled).map(row => row.size),
+      termsText: terms.text, termsVersionId: terms.id, termsVersion: terms.version, settingsRevision: current.revision,
+      deliveryText: current.deliveryText, refundMonths: current.refundMonths
     }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    console.error('Lettura stato PRE-SALE non riuscita', error);
-    return NextResponse.json({ error: 'Stato PRE-SALE non disponibile.' }, { status: 503 });
-  }
+  } catch { return NextResponse.json({ error: 'Stato PRE-SALE non disponibile.' }, { status: 503 }); }
 }

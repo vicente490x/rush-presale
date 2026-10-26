@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ImageGallery } from '@/components/ImageGallery';
 import { ScrollReveal } from '@/components/ScrollReveal';
-import { TryOn } from '@/components/TryOn';
 import { Turnstile } from '@/components/Turnstile';
-import { presaleTermsAcceptance, presaleTermsForThreshold } from '@/lib/presale-terms';
 
 type SaleStatus = {
   total: number;
@@ -18,7 +16,12 @@ type SaleStatus = {
   priceCents: number;
   maxQty: number;
   sizes: string[];
-  tryOn: boolean;
+  termsText: string;
+  termsVersionId: string;
+  termsVersion: number;
+  settingsRevision: number;
+  closedMessage: string;
+  deliveryText: string;
 };
 
 function euro(cents: number) {
@@ -27,14 +30,15 @@ function euro(cents: number) {
 
 export function Storefront() {
   const [sale, setSale] = useState<SaleStatus>();
-  const [displayTotal, setDisplayTotal] = useState(0);
-  const displayTotalRef = useRef(0);
   const [quantity, setQuantity] = useState(1);
   const [size, setSize] = useState('M');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [challengeReset, setChallengeReset] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [accepted, setAccepted] = useState(false);
+  const revision = useRef<number | undefined>(undefined);
+  const attempt = useRef<{ fingerprint: string; key: string } | undefined>(undefined);
 
   const onToken = useCallback((token: string) => setTurnstileToken(token), []);
 
@@ -42,10 +46,16 @@ export function Storefront() {
     const response = await fetch('/api/status', { cache: 'no-store' });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? 'Impossibile caricare lo stato PRE-SALE.');
+    if (revision.current !== undefined && revision.current !== result.settingsRevision) setAccepted(false);
+    revision.current = result.settingsRevision;
     setSale(result as SaleStatus);
+    setSize(value => result.sizes.includes(value) ? value : result.sizes[0] ?? '');
+    setQuantity(value => Math.min(value, result.maxQty));
   }, []);
 
   useEffect(() => {
+    // Async polling plus hydration of the existing URL-based size/cancel flow.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Stato PRE-SALE non disponibile.'));
     const interval = window.setInterval(() => {
       load().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Stato PRE-SALE non disponibile.'));
@@ -56,50 +66,30 @@ export function Storefront() {
     return () => window.clearInterval(interval);
   }, [load]);
 
-  useEffect(() => {
-    if (!sale) return;
-    const target = sale.total;
-    const from = displayTotalRef.current;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || from === target) {
-      displayTotalRef.current = target;
-      setDisplayTotal(target);
-      return;
-    }
-    let start: number | undefined;
-    let frame = 0;
-    const animate = (timestamp: number) => {
-      start ??= timestamp;
-      const progress = Math.min(1, (timestamp - start) / 650);
-      const eased = 1 - (1 - progress) ** 3;
-      const value = Math.round(from + (target - from) * eased);
-      displayTotalRef.current = value;
-      setDisplayTotal(value);
-      if (progress < 1) frame = window.requestAnimationFrame(animate);
-    };
-    frame = window.requestAnimationFrame(animate);
-    return () => window.cancelAnimationFrame(frame);
-  }, [sale?.total]);
-
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!sale?.open) return setError('La PRE-SALE è chiusa.');
+    if (!accepted) return setError('Accetta le condizioni della PRE-SALE.');
     if (!turnstileToken) return setError('Completa la verifica anti-bot.');
     setError('');
     setSubmitting(true);
     const form = new FormData(event.currentTarget);
+    const details = {
+      firstName: String(form.get('firstName') ?? '').trim(), lastName: String(form.get('lastName') ?? '').trim(),
+      email: String(form.get('email') ?? '').trim().toLowerCase(), size, quantity,
+      terms: accepted, termsVersionId: sale.termsVersionId, settingsRevision: sale.settingsRevision
+    };
+    const fingerprint = JSON.stringify(details);
+    if (attempt.current?.fingerprint !== fingerprint) attempt.current = { fingerprint, key: crypto.randomUUID() };
     try {
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName: form.get('firstName'),
-          lastName: form.get('lastName'),
-          email: form.get('email'),
-          size,
-          quantity,
-          terms: form.get('terms') === 'on',
+          ...details,
+          checkoutKey: attempt.current!.key,
           turnstileToken,
-          website: form.get('contactFax') || undefined
+          website: form.get('website')
         })
       });
       const result = await response.json();
@@ -118,7 +108,6 @@ export function Storefront() {
   }
 
   const threshold = sale?.threshold ?? 15;
-  const terms = presaleTermsForThreshold(threshold);
   const total = sale?.total ?? 0;
   const progress = Math.min(100, total / threshold * 100);
 
@@ -134,20 +123,16 @@ export function Storefront() {
           <ScrollReveal className="product-copy">
             <div className="eyebrow">EDIZIONE RUSH · PRE-SALE</div>
             <h1>RUSH<br />T-SHIRT</h1>
-            <p className="price">{euro(sale?.priceCents ?? 2500)}</p>
+            <p className="price">{sale ? euro(sale.priceCents) : 'CARICAMENTO…'}</p>
 
             <section className="counter-card" aria-live="polite">
-              <div className="counter-numbers">
-                <span aria-hidden="true">{displayTotal}</span> / {threshold} <small>PEZZI PRENOTATI</small>
-                <span className="sr-only">Pezzi prenotati: {total} di {threshold}</span>
-              </div>
-              <div className="progress-track" role="progressbar" aria-label="Avanzamento della soglia" aria-valuemin={0} aria-valuemax={threshold} aria-valuenow={Math.min(total, threshold)} aria-valuetext={`${Math.round(progress)}% della soglia raggiunto`}>
+              <div className="counter-numbers"><span>{sale ? total : '—'}</span> / {sale ? threshold : '—'} <small>PEZZI PRENOTATI</small></div>
+              <div className="progress-track" aria-label={`${Math.round(progress)}% della soglia raggiunto`}>
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
-              {sale?.thresholdReached && <p className="threshold-badge" role="status">✓ SOGLIA RAGGIUNTA</p>}
               <p className="counter-message">
-                {sale?.thresholdReached
-                  ? '✓ SOGLIA RAGGIUNTA — la produzione può partire. La PRE-SALE resta aperta.'
+                {!sale ? 'Caricamento dello stato PRE-SALE…' : sale.thresholdReached
+                  ? (sale.open ? '✓ SOGLIA RAGGIUNTA — la produzione può partire. La PRE-SALE resta aperta.' : '✓ SOGLIA RAGGIUNTA — PRE-SALE chiusa.')
                   : `${sale?.missing ?? threshold} ${sale?.missing === 1 ? 'pezzo mancante' : 'pezzi mancanti'} alla soglia minima di produzione.`}
               </p>
             </section>
@@ -174,25 +159,25 @@ export function Storefront() {
                 <input className="form-control" name="lastName" autoComplete="family-name" placeholder="Cognome" aria-label="Cognome" maxLength={60} required />
               </div>
               <input className="form-control" name="email" type="email" autoComplete="email" placeholder="Email" aria-label="Email" maxLength={120} required />
-              <input className="sr-only" name="contactFax" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+              <input className="sr-only" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
               <section className="presale-terms">
                 <h2>ATTENZIONE — PRE-SALE</h2>
-                {terms.map((term) => <p key={term}>{term}</p>)}
+                {sale?.termsText.split('\n\n').slice(1).map((paragraph, i) => <p key={i}>{paragraph}</p>)}
+                {sale && <p className="fine-print">Versione condizioni: {sale.termsVersion}</p>}
                 <label className="check-row">
-                  <input type="checkbox" name="terms" required />
-                  <span>{presaleTermsAcceptance}</span>
+                  <input type="checkbox" name="terms" checked={accepted} onChange={event => setAccepted(event.target.checked)} disabled={!sale} required />
+                  <span>Ho letto e accetto le condizioni della PRE-SALE e i <Link href="/termini">termini e condizioni</Link>.</span>
                 </label>
-                <Link href="/termini">Leggi anche i termini e condizioni</Link>
               </section>
 
-              <div className="total-row"><span>Totale</span><strong>{euro((sale?.priceCents ?? 2500) * quantity)}</strong></div>
+              <div className="total-row"><span>Totale</span><strong>{sale ? euro(sale.priceCents * quantity) : '—'}</strong></div>
               {sale?.open === false ? (
-                <div className="status-closed" role="status">PRE-SALE CHIUSA</div>
+                <div className="status-closed" role="status">{sale.closedMessage}</div>
               ) : (
                 <>
                   <Turnstile onToken={onToken} resetKey={challengeReset} />
-                  <button className="button-primary" type="submit" disabled={submitting || !turnstileToken}>
+                  <button className="button-primary" type="submit" disabled={submitting || !turnstileToken || !accepted || !sale || !sale.sizes.includes(size)}>
                     {submitting ? 'COLLEGAMENTO A STRIPE…' : 'PRE-SALE'}
                   </button>
                 </>
@@ -205,10 +190,10 @@ export function Storefront() {
 
         <section className="how-grid" aria-label="Come funziona la PRE-SALE">
           {[
-            ['01', 'Prenota', '25€ a maglietta. Scegli taglia e quantità.'],
-            ['02', 'Soglia 15', 'Raggiunta la soglia la produzione può partire. La PRE-SALE resta aperta.'],
+            ['01', 'Prenota', `${sale ? euro(sale.priceCents) : 'Caricamento prezzo'} a maglietta. Scegli taglia e quantità.`],
+            ['02', `Soglia ${sale?.threshold ?? '—'}`, 'Raggiunta la soglia la produzione può partire. La PRE-SALE resta aperta.'],
             ['03', 'Produzione', 'Lo stato viene aggiornato dall’amministratore.'],
-            ['04', 'Consegna', 'Durante una serata RUSH o tramite uno dei PR di fiducia.']
+            ['04', 'Consegna', sale?.deliveryText ?? 'Caricamento condizioni di consegna…']
           ].map(([index, title, text]) => (
             <ScrollReveal key={index} className="how-step">
               <div className="how-index">{index} / COME FUNZIONA</div><b>{title}</b><span>{text}</span>
@@ -216,7 +201,6 @@ export function Storefront() {
           ))}
         </section>
 
-        {sale?.tryOn && <TryOn selectedSize={size} />}
       </main>
     </>
   );

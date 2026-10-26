@@ -1,56 +1,62 @@
 {
   "name": "rush-presale",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "engines": {
     "node": ">=22 <25"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "tsc --noEmit",
-    "test": "node --import tsx --import ./scripts/load-test-env.ts --experimental-test-coverage --test tests/*.test.ts",
-    "test:setup": "tsx scripts/setup-test-env.ts",
+    "lint": "eslint . --max-warnings=0",
+    "test": "node --import tsx --test tests/*.test.ts",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate deploy",
-    "db:dev": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "admin:setup": "tsx scripts/setup-local-admin.ts",
-    "seed": "tsx prisma/seed.ts",
-    "seed:demo": "tsx prisma/seed.ts --demo",
-    "db:reset": "tsx scripts/db-reset.ts"
+    "db:migrate": "node --import tsx scripts/prisma-cli.ts migrate deploy",
+    "db:dev": "node --import tsx scripts/prisma-cli.ts migrate dev",
+    "db:studio": "node --import tsx scripts/prisma-cli.ts studio",
+    "admin:setup": "node --import tsx scripts/setup-local-admin.ts",
+    "create-admin": "node --import tsx scripts/create-admin.ts",
+    "test:integration": "node --import tsx scripts/test-integration.ts",
+    "typecheck": "tsc --noEmit",
+    "test:http": "node --import tsx scripts/test-http.ts",
+    "staging:credentials": "node --import tsx scripts/staging-credentials.ts",
+    "staging:check": "node --import tsx scripts/staging-check.ts",
+    "db:validate": "node --import tsx scripts/prisma-cli.ts validate",
+    "test:migration": "node --import tsx scripts/test-migration.ts",
+    "production:check": "node --import tsx scripts/production-check.ts",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
-    "@fal-ai/client": "^1.6.2",
+    "@next/env": "16.4.2",
     "@prisma/client": "^6.12.0",
-    "@supabase/supabase-js": "^2.57.4",
     "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "^1.35.3",
     "bcryptjs": "^3.0.2",
-    "file-type": "^22.1.1",
+    "fflate": "0.8.3",
     "framer-motion": "^12.23.12",
     "gsap": "^3.13.0",
     "jose": "^6.1.0",
-    "next": "^16.4.0",
+    "next": "16.4.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "resend": "^6.1.2",
     "sharp": "^0.35.5",
     "stripe": "^18.5.0",
-    "zod": "^3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.18.6",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "prisma": "^6.12.0",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.71.2"
   }
 }

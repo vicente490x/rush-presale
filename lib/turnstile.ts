@@ -1,7 +1,4 @@
 export async function verifyTurnstile(token: unknown, remoteIp?: string) {
-  if (process.env.APP_ENV !== 'production' && process.env.TURNSTILE_MODE === 'mock') {
-    return token === 'test-pass';
-  }
   if (typeof token !== 'string' || !token || !process.env.TURNSTILE_SECRET_KEY) return false;
   const body = new URLSearchParams({
     secret: process.env.TURNSTILE_SECRET_KEY,
@@ -12,8 +9,11 @@ export async function verifyTurnstile(token: unknown, remoteIp?: string) {
   const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
     method: 'POST',
     body,
-    cache: 'no-store'
+    cache: 'no-store',
+    signal: AbortSignal.timeout(8000)
   });
-  const result = (await response.json()) as { success?: boolean };
-  return result.success === true;
+  if (!response.ok) throw new Error(`Verifica anti-bot non disponibile (${response.status}).`);
+  const result = (await response.json()) as { success?: boolean; hostname?: string };
+  const expected = new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').hostname;
+  return result.success === true && result.hostname === expected;
 }

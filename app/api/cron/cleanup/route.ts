@@ -1,25 +1,12 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'node:crypto';
-import { removeExpiredAssets } from '@/lib/storage';
-
+import { cronAuthorized } from '@/lib/cron-auth';
+import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
-
-function authorized(request: Request) {
-  const expected = process.env.CRON_SECRET;
-  const supplied = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-  if (!expected || !supplied) return false;
-  const a = Buffer.from(expected);
-  const b = Buffer.from(supplied);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: 'Non autorizzato.' }, { status: 401 });
+  if (!cronAuthorized(request)) return NextResponse.json({ error: 'Non autorizzato.' }, { status: 401 });
   try {
-    const removed = await removeExpiredAssets();
-    return NextResponse.json({ removed });
-  } catch (error) {
-    console.error('Pulizia asset try-on non riuscita', error);
-    return NextResponse.json({ error: 'Pulizia immagini temporanee non riuscita.' }, { status: 500 });
-  }
+    await prisma.rateLimitEntry.deleteMany({ where: { resetAt: { lt: new Date(Date.now() - 86400000) } } });
+    await prisma.adminSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+    return NextResponse.json({ ok: true });
+  } catch { return NextResponse.json({ error: 'Pulizia non completata.' }, { status: 500 }); }
 }

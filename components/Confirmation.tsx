@@ -9,6 +9,8 @@ type OrderState = {
   quantity: number;
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED';
   expiresAt: string | null;
+  refundStatus: string;
+  productionStartedAt: string | null;
 };
 
 export function Confirmation({ orderNumber }: { orderNumber: string }) {
@@ -38,14 +40,14 @@ export function Confirmation({ orderNumber }: { orderNumber: string }) {
 
   return (
     <main className="confirm-card">
-      {order?.paymentStatus === 'PAID' ? (
+      {order?.refundStatus === 'REFUNDED' ? <><h1>ORDINE RIMBORSATO</h1><p>{order.orderNumber}</p><p>Il rimborso è stato confermato. I tempi di accredito dipendono dal metodo di pagamento.</p></> : order?.paymentStatus === 'PAID' ? (
         <>
           <div className="confirmation-tick" aria-hidden="true">✓</div>
           <p className="eyebrow">GRAZIE PER ESSERE PARTE DI RUSH</p>
           <h1>ORDINE<br />CONFERMATO</h1>
           <p className="order-code">{order.orderNumber}</p>
           <p>RUSH T-SHIRT · taglia {order.size} × {order.quantity}</p>
-          {order.expiresAt && <p>Se la produzione non parte entro il {new Date(order.expiresAt).toLocaleDateString('it-IT')}, riceverai il rimborso automatico.</p>}
+          {order.refundStatus === 'PENDING' ? <p>Rimborso in elaborazione: attendiamo l’esito di Stripe.</p> : order.productionStartedAt ? <p>La produzione è stata avviata. La consegna sarà organizzata da RUSH.</p> : order.expiresAt && <p>Se la produzione non parte entro il {new Date(order.expiresAt).toLocaleDateString('it-IT')}, riceverai il rimborso automatico.</p>}
           <p>La conferma arriverà all’indirizzo email usato per il pagamento.</p>
         </>
       ) : order?.paymentStatus === 'FAILED' ? (
