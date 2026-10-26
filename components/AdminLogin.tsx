@@ -49,7 +49,7 @@ export function AdminLogin({ localDevelopment = false }: { localDevelopment?: bo
         <input className="form-control" id="admin-password" name="password" type="password" autoComplete="current-password" required />
         {localDevelopment
           ? <p className="fine-print">Accesso locale di sviluppo: la verifica anti-bot esterna non è richiesta.</p>
-          : <Turnstile onToken={onToken} resetKey={challengeReset} />}
+          : <Turnstile key={challengeReset} onToken={onToken} />}
         <button className="button-primary" disabled={busy || (!localDevelopment && !token)}>{busy ? 'VERIFICA…' : 'ACCEDI'}</button>
         <p role="alert" className="error-box">{error}</p>
       </form>

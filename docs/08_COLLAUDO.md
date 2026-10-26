@@ -46,6 +46,7 @@ npm audit --audit-level=high
 npm run build
 npm run test:integration
 npm run test:migration
+npm run test:backup
 npm run test:http
 ```
 
@@ -76,3 +77,30 @@ Non sono stati completati pagamento TEST remoto, ricezione email, rimborso provi
 ## Gestione anomalie
 
 Registrare ID, requisito, gravità, passi, atteso/osservato, commit, ambiente ed evidenza priva di segreti. P1 economici/autorizzativi impediscono il rilascio; P2 richiede valutazione del referente. Dopo una correzione ripetere il caso e la regressione pertinente. Usare il registro rischi per punti organizzativi che non rappresentano un difetto di codice.
+
+## Estensione operativa 2.1.1
+
+- Nuovi test server: token anti-bot oltre limite rifiutato senza rete, IP non valido omesso, errori e timeout provider mai autorizzativi. La copertura hostname esatto resta nel collaudo esistente.
+- Prova locale backup/ripristino del 26 ottobre: PASS su PostgreSQL 16.15; archivio custom 33.287 byte, dump 61 ms, ripristino 40 ms. Importi, date, relazioni termini, outbox e checksum migrazioni identici; la modifica della copia non altera la sorgente. Tempi del solo archivio di collaudo, non RPO/RTO del servizio commerciale.
+- Stripe TEST: account Sandbox di eccomerce confermato; webhook canonico enabled con tutti gli eventi attesi. Nessuna sessione Checkout presente al momento della verifica: pagamento/rimborso provider completo ancora aperto.
+- Screenshot cliente: verifica Cloudflare in corso con modalità Isolamento del browser. Il dato è un’indicazione di possibile incompatibilità, non una diagnosi certa. La correzione aggiunge recupero e feedback, senza bypassare la protezione.
+
+Regressione locale 2.1.1: lint, TypeScript e build PASS; 31 test unitari PASS (contenitore integrazione escluso dal solo comando unitario), 37 casi di integrazione più contenitore PASS senza skip, migrazione PASS, backup/ripristino PASS, 33 controlli HTTP PASS, npm audit zero vulnerabilità note.
+
+## Riscontro online e consegna 2.1.1
+
+Candidato con audit aggiornato: `5dbf6fc`. Deployment di verifica `dpl_3pZhsehQqesao6hibjx9sfUry7tv`, dominio pubblico canonico. Pipeline push [40341391208](https://github.com/vicente490x/rush-presale/actions/runs/40341391208) e PR [40341398571](https://github.com/vicente490x/rush-presale/actions/runs/40341398571): completate con successo, inclusi installazione, audit, verify, integrazione, migrazione, backup e HTTP.
+
+| Controllo effettivo | Esito | Evidenza e limite |
+|---|---|---|
+| Vercel | PASS | Deployment READY del candidato esatto; modalità applicativa TEST mantenuta |
+| Configurazione staging | PASS | Preflight sul processo del deployment senza problemi; valori sensibili non divulgati |
+| Database Neon | Connessione/migrazioni PASS; trasporto OPEN | DATABASE_URL e DIRECT_URL raggiungibili, migrazioni applicate; pg_stat_ssl vede false sull’ultimo hop. Un pooler può terminare TLS prima di tale hop: serve verifica provider, non si deduce che il percorso cliente sia in chiaro |
+| Stripe TEST | PASS per connettività/configurazione | Account confermato corrispondente alla chiave runtime; modalità TEST coerente; webhook canonico abilitato e copertura eventi completa |
+| Redis | PASS per connettività | PING autenticato restituisce PONG |
+| Resend | OPEN | Lettura del dominio mittente non disponibile con la configurazione/permessi attuali; invio e recapito non provati |
+| Browser desktop | PASS per rendering e feedback | Presale mostra 25 EUR, 0/15, taglie, quantità, dati e condizioni; dopo attesa mostra aiuto e pulsante Riprova verifica. Checkout disabilitato senza token; nessun challenge risolto o ordine inviato |
+| Flusso economico completo | OPEN | Nessuna sessione Checkout o evento pagamento/rimborso pertinente presente nel sandbox alla verifica; non dichiarare completato ordine → webhook → email → rimborso |
+| Backup commerciale | OPEN | La prova pg_dump/pg_restore è locale; snapshot, retention e ripristino Neon effettivi richiedono accesso al provider |
+
+L’audit non ha modificato ordini, schemi, cron, email o pagamenti. I test locali continuano a usare destinazioni temporanee separate. Non sono state abilitate vendite LIVE o cambiate conferme commerciali.

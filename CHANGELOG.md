@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.1 — 26 ottobre 2026
+
+- Gestione visibile di errori, scadenze, browser non supportati e attese prolungate della verifica anti-bot; nuovo tentativo disponibile per cliente e amministratore.
+- Controllo server Turnstile con limite del token e inoltro dei soli indirizzi IP validi.
+- Audit operativo in sola lettura di configurazione, database/TLS/migrazioni, Stripe/webhook, dominio email e Redis, senza divulgare credenziali.
+- Prova automatica pg_dump/pg_restore su due database locali separati: dati economici, date, relazioni, outbox e checksum migrazioni preservati.
+
 ## 2.1.0 — 26 ottobre 2026
 
 - Documentazione organizzata in dossier, matrice requisiti, architettura, dati/API, guida codice, manuale, sicurezza, collaudo, gestione tecnica e piano di rilascio.

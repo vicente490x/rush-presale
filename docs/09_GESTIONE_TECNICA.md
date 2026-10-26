@@ -38,6 +38,20 @@ Per la produzione sostituire il percorso con il file produzione esplicito e conf
 
 Usare il generatore interattivo `npm run staging:credentials` per hash/segreti e `npm run admin:setup` per il solo accesso locale. Proteggere i file creati; non riutilizzare i segreti tra ambienti.
 
+## Audit operativo ripetibile
+
+Il comando `npm run release:audit -- --env-file .env.staging.local --online` esegue controlli in sola lettura sui servizi effettivi. Su Vercel usare `npm run release:audit -- --process-env --online`, con le variabili protette già presenti nel deployment. L’output contiene solo esiti, problemi a testo fisso e identificativo account Stripe; non stampa credenziali, URL database, destinatari o risposte provider. I controlli online leggono database/migrazioni, connessione diretta, TLS osservabile da PostgreSQL, account e webhook Stripe, domini Resend e PING Redis. Nessuna sessione, email, modifica o rimborso viene creato.
+
+L’audit è un rapporto osservativo: termina regolarmente anche se alcuni requisiti sono FAIL/OPEN, così può essere eseguito nella build del sito TEST. Non sostituisce il preflight bloccante `production:check`, il collaudo completo o l’accettazione del titolare. Un token Resend limitato agli invii potrebbe non consentire la lettura dei domini: in quel caso la verifica resta OPEN.
+
+Il valore pg_stat_ssl descrive l’ultimo collegamento al backend PostgreSQL: dietro un pooler TLS non rappresenta necessariamente il tratto applicazione → provider. Un valore false mantiene aperta la verifica del trasporto; confrontare configurazione TLS del client, endpoint diretto e documentazione/impostazioni del provider prima di certificare o modificare il servizio.
+
+## Verifica anti-bot e browser
+
+Cliente e login amministratore mostrano errori, scadenze e un messaggio dopo 15 secondi di attesa. `Riprova verifica` ricrea il widget; se lo script non è caricato, `Ricarica pagina` ritenta il caricamento. Il pagamento resta disabilitato fino alla verifica e il server valida sempre token e hostname. Le restrizioni del browser possono interferire; non si richiede di disabilitare globalmente le protezioni del dispositivo. Provare prima ad aprire la pagina direttamente in un browser aggiornato.
+
+Riferimenti tecnici: [configurazione widget Cloudflare](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/widget-configurations/) e [browser supportati](https://developers.cloudflare.com/cloudflare-challenges/reference/supported-browsers/).
+
 ## Stripe e notifiche
 
 Registrare POST `/api/stripe/webhook` sul dominio canonico e usare il signing secret dell’endpoint esatto. Sono gestiti completamento/successo asincrono/scadenza/fallimento Checkout e gli eventi rimborso previsti dalle route. Il browser non invia un importo autorevole e il ritorno a conferma non prova il pagamento.
@@ -58,6 +72,12 @@ Daily ha budget complessivo e batch limitati: fino a 50 preavvisi, 25 rimborsi e
 Il titolare deve definire frequenza, retention, cifratura, autorizzati, RPO e RTO. RPO/RTO non sono stati misurati e non devono essere dichiarati garantiti. Abilitare backup/snapshot del provider; conservare almeno una copia con accesso separato dalla credenziale runtime.
 
 La prova di ripristino deve usare una nuova destinazione isolata, senza sostituire il DB attivo. Verificare conteggi, importi, relazioni, migrazioni e lettura applicativa; registrare durata ed esito. Con strumenti PostgreSQL usare un profilo libpq protetto e `pg_dump` in formato custom, evitando URL con password negli argomenti o nei log. Testare `pg_restore` sul DB isolato e chiuderlo secondo le regole di conservazione autorizzate.
+
+### Prova automatica locale
+
+`npm run test:backup` richiede un PostgreSQL locale `rush_audit*` indicato da RUSH_TEST_DATABASE_URL e client pg_dump/pg_restore compatibili (PG_BIN_DIR può indicarne la cartella). Crea sorgente e destinazione con nomi casuali, applica le migrazioni, inserisce dati di collaudo confinati, genera un archivio custom e ripristina in un database nuovo e vuoto. Confronta ordini, importi, date, termini, outbox e checksum; modifica la copia per provare l’indipendenza dalla sorgente. Elimina soltanto i due database creati dal runner. L’archivio temporaneo ha accesso limitato all’utente.
+
+Questa prova valida la procedura sullo schema applicativo; non certifica backup, retention o RPO/RTO del database commerciale. Per questi ultimi servono accesso al provider e una destinazione effettivamente separata.
 
 ## Incidenti e rollback
 

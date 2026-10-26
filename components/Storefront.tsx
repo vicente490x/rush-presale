@@ -176,7 +176,7 @@ export function Storefront() {
                 <div className="status-closed" role="status">{sale.closedMessage}</div>
               ) : (
                 <>
-                  <Turnstile onToken={onToken} resetKey={challengeReset} />
+                  <Turnstile key={challengeReset} onToken={onToken} />
                   <button className="button-primary" type="submit" disabled={submitting || !turnstileToken || !accepted || !sale || !sale.sizes.includes(size)}>
                     {submitting ? 'COLLEGAMENTO A STRIPE…' : 'PRE-SALE'}
                   </button>

@@ -1,6 +1,6 @@
 # REL-01 — Piano di rilascio e registro rischi
 
-**Release 2.1.0 · 26 ottobre 2026**
+**Release 2.1.1 · 26 ottobre 2026**
 
 ## Sequenza e gate
 
@@ -38,6 +38,19 @@ La pubblicazione del codice su main non attiva automaticamente vendite LIVE. Il 
 - [ ] Build Production finale verificata prima dell’assegnazione del dominio; rollback pronto.
 - [ ] Approvazione del titolare e conferma lancio registrate.
 
+## Avanzamento operativo 2.1.1
+
+| Attività | Evidenza | Stato |
+|---|---|---|
+| Webhook Stripe TEST | Account Sandbox di eccomerce confermato dal titolare; endpoint canonico abilitato con gli otto eventi gestiti | Verificato nel provider |
+| Pagamento TEST completo | Nessuna sessione Checkout presente nell’account alla verifica iniziale | Aperto |
+| Recupero anti-bot | Feedback dopo attesa, errori/scadenze, browser non supportati e nuovo tentativo; validazione server mantenuta | Implementato; feedback e blocco senza token osservati nel browser desktop |
+| Backup/ripristino procedura | pg_dump custom e pg_restore transazionale su database locali separati; dati/relazioni/checksum conservati | PASS locale; backup commerciale aperto |
+| Configurazione e connettività | Audit sul deployment: staging PASS, Stripe/webhook e Redis PASS; Neon raggiungibile e migrazioni attuali, trasporto da verificare; Resend OPEN | Esiti registrati in QA-01 |
+| Dati e approvazione venditore | Non ancora forniti per questa release | Aperto, impedisce LIVE |
+
+I riscontri definitivi di build/deploy e servizi vanno registrati nel rapporto di collaudo. La conferma dell’account TEST non autorizza a considerare configurato un account LIVE.
+
 ## Registro rischi
 
 | ID | Rischio / effetto | Priorità | Azione e responsabile |
@@ -55,3 +68,17 @@ La pubblicazione del codice su main non attiva automaticamente vendite LIVE. Il 
 ## Consegna e accettazione
 
 Il referente progetto approva deliverable e rapporto di collaudo; il titolare approva G5. Nessun campo aperto viene chiuso con una semplice modifica testuale. Data, commit, dominio, evidenza e responsabile devono accompagnare la decisione.
+
+## Azioni per chiudere G5
+
+| Prerequisito | Azione concreta | Criterio di chiusura |
+|---|---|---|
+| Titolare e informative | Fornire ragione sociale/nome ufficiale, sede, dati fiscali, contatti assistenza/privacy e procedura di recesso effettiva; revisionare i testi | Campi reali pubblicati e accettazione del titolare registrata |
+| Neon | Collegare il progetto esistente, verificare endpoint/pooler/TLS, separazione TEST/LIVE, ruoli e politiche backup; ripristinare su destinazione nuova | Evidenza provider e lettura applicativa della copia; tempi misurati, nessuna sovrascrittura del DB attivo |
+| Resend | Verificare dominio e mittente nel provider; eseguire invio TEST a destinatario autorizzato e verificare ricezione | ID messaggio, accettazione e recapito documentati senza credenziali nei report |
+| Percorso cliente | Completare controllo anti-bot su browser/dispositivo supportato, effettuare un ordine Stripe TEST e relativo rimborso | Sessione, ordine, webhook, email e rimborso riconciliati; retry senza duplicati |
+| Stripe LIVE | Collegare l’account commerciale corretto e configurare chiave e webhook LIVE separati usando i segreti Vercel | Preflight produzione riuscito e controlli provider completati |
+| Esercizio | Assegnare assistenza/incidenti, verificare cron effettivi e backlog sul volume atteso, predisporre rollback | Evidenza di esecuzione e responsabili individuati |
+| Lancio | Completare preflight e checklist prima di impostare le conferme di lancio | G5 chiuso con data, commit e approvazione del titolare |
+
+Il collegamento Stripe disponibile è il sandbox TEST, non un accesso LIVE. Il database è identificato come Neon, ma l’accesso di gestione al provider non è stato ancora collegato. La richiesta di completare il piano non sostituisce dati autentici, accessi o prove effettive.
