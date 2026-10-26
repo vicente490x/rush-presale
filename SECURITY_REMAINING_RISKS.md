@@ -4,10 +4,10 @@
 
 ## Bloccanti per la dichiarazione online/commerciale
 
-1. **Vercel:** accesso al team `Wrath` ancora 403. Il progetto visibile appartiene a un ambito diverso dal deployment `vicente-8f24` bloccato sul precedente push. Occorre autorizzare il team corretto e verificare commit, branch, log, ambiente e READY. Nessun rebuild remoto è dichiarato completato.
+1. **Pubblicazione commerciale:** accesso al team Wrath ora autorizzato; il deployment del commit `b3ff206` è READY e il dominio pubblico risponde senza password. L’app resta in TEST. I vecchi errori del progetto `vicente-8f24` appartengono a un altro ambito e non dimostrano un blocco del dominio Wrath corrente.
 2. **Configurazione autentica:** DB/TLS/ruoli/backup e prova ripristino, Stripe e webhook, Resend/mittente, Turnstile/hostname e Upstash devono essere verificati nei rispettivi provider. Una fixture valida o un flag CONFIRMED non prova questi requisiti.
 3. **Dati del venditore:** ragione sociale/nome, sede, identificativo fiscale, contatti privacy/assistenza e procedura di recesso devono essere forniti e verificati dal titolare. Sono campi server configurabili, non dati inventati. Le pagine aggiornate non costituiscono una revisione legale.
-4. **Collaudo browser/online:** esecuzione desktop/mobile, console/CSP, CAPTCHA, Checkout TEST e ritorno, email, rimborsi e cron sul dominio effettivo restano aperti. Il tentativo di preparare Chromium non è riuscito; non è stata eseguita verifica visuale.
+4. **Collaudo browser/online:** rendering desktop e navigazione home → presale verificati. Restano layout mobile, completamento CAPTCHA, Checkout TEST e ritorno, email, rimborsi e cron sul dominio effettivo.
 5. **Segreti e cron:** usare password admin nuova e segreti distinti per ambiente. Il precedente audit citava un hash SQLite storico locale: questa esecuzione non ha a disposizione quella storia locale e non ne ricertifica la gestione. Se la password è stata riutilizzata, sostituirla. Verificare scheduler e monitoraggio prima di promettere rimborsi automatici in produzione.
 
 ## Limiti residui del progetto
@@ -16,7 +16,7 @@
 - Rimborsi e email con esito ambiguo oltre 23 ore richiedono riconciliazione manuale. L’idempotenza limita duplicazioni, non sostituisce il controllo del provider.
 - Daily elabora batch limitati: verificare che i volumi reali rientrino nella frequenza/timeout del piano; monitorare `moreDue`, backlog e errori. Nessun cambiamento di piano a pagamento effettuato.
 - Cleanup elimina soltanto sessioni/rate limit e asset temporanei scaduti; retention di ordini, audit, ricevute webhook, outbox e backup deve essere definita. Nessun ordine economico eliminato per accorciare i log.
-- Mancano verifica CDN e protezione hosting effettive. Gli header dell’app non certificano la configurazione del provider.
+- Header HTTPS/CSP/no-store e accesso anonimo sono stati osservati sul dominio pubblico. Restano comportamento della CDN in più scenari e controlli operativi del provider.
 - Il workflow GitHub è passato sul candidato codice `4d61f8a`; per impedire release con controlli falliti servono branch protection/Deployment Checks nel progetto. Non sono stati modificati permessi amministrativi GitHub.
 - `npm audit` rileva soltanto gli advisory noti al controllo. La patch Zod non è una garanzia generale sulla supply chain.
 - L’AI rimane disabilitata. Riattivarla richiede revisione separata di privacy, storage, provider, cancellazione e quote.

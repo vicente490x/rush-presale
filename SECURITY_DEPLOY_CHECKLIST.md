@@ -15,7 +15,7 @@
 
 ## Staging pubblico TEST
 
-- [ ] Confermare team e progetto prima del rebuild: nei riferimenti esistenti compaiono due progetti `rush-presale`, uno `Wrath/wrath5` e uno `vicente-8f24`. Non trasferire o cancellare progetti per tentativi.
+- [x] Confermati team Wrath e progetto `prj_97dQzkl8OOPj6ZEz8irYoQQFOZxe`; commit `b3ff206` READY e dominio pubblico raggiungibile. Riferimenti storici: nei riferimenti esistenti compaiono due progetti `rush-presale`, uno `Wrath/wrath5` e uno `vicente-8f24`. Non trasferire o cancellare progetti per tentativi.
 - [ ] Usare il commit aggiornato di `staging`, scope Vercel Preview, `APP_ENV=staging`, `STRIPE_MODE=test`, `ALLOW_LIVE_PAYMENTS=false`.
 - [ ] `NEXT_PUBLIC_SITE_URL` deve corrispondere all’origine HTTPS stabile usata nel browser e in Turnstile. Non aggiungere path, userinfo, query o hash.
 - [ ] Configurare DB staging indipendente, pool runtime e URL diretto; TLS `sslmode=require&sslaccept=strict`; impostare `STAGING_DATABASE_CONFIRMED=true` solo dopo controllo effettivo.
@@ -23,9 +23,10 @@
 - [ ] Mantenere `ENABLE_AUTOMATIC_JOBS=false`, `TRYON_REVIEWED=false`. `STAGING_PASSWORD_HASH` e `STAGING_SESSION_SECRET` non sono più usati e possono essere rimossi.
 - [ ] Eseguire `npm run staging:check -- --env-file .env.staging.local` sull’ambiente autentico; zero problemi di formato richiesti.
 - [ ] Applicare le tre migrazioni allo staging confermato con `npm run db:migrate -- --env-file .env.staging.local`, quindi `node --import tsx scripts/prisma-cli.ts migrate status --env-file .env.staging.local`.
-- [ ] Distribuire l’ultimo commit, verificare READY e aprire `/`, `/presale`, informative e logo senza cookie. `/anteprima` deve rimandare a `/`; `/admin` deve chiedere il login; `/api/admin/settings` senza cookie deve rispondere 401.
+- [x] Verificato READY sul commit `b3ff206` e aperti `/`, `/presale`, informative e logo senza cookie. `/anteprima` deve rimandare a `/`; `/admin` deve chiedere il login; `/api/admin/settings` senza cookie deve rispondere 401.
 - [ ] Se compare la schermata Vercel Authentication, verificare Deployment Protection nel progetto corretto. Il webhook Stripe e i cron devono poter raggiungere l’app; non rimuovere autenticazione admin o firma webhook per risolverlo.
-- [ ] In browser desktop/mobile verificare CAPTCHA, form, errori, annullamento pagamento, conferma, dashboard, export e logout; controllare console/CSP.
+- [x] Verificati nel browser desktop home e navigazione alla presale con immagini, prezzo e form.
+- [ ] Completare verifiche mobile, CAPTCHA, errori, annullamento pagamento, conferma, dashboard, export e logout; controllare console/CSP nel flusso completo.
 - [ ] Completare un ordine Stripe TEST, verificare evento firmato PAID, email, duplicato webhook, rimborso TEST e aggiornamento contatori.
 
 ## Produzione commerciale

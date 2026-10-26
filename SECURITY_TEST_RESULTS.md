@@ -15,9 +15,29 @@ Esecuzione sul candidato successivo a `ed9e464`, Node 24.22.1, Next 16.4.2, Pris
 | `npm run build` con fixture produzione LIVE | PASS | Solo configurazione sintetica nel processo build; nessuna chiave o chiamata LIVE reale |
 | `npm run test:http` | PASS: 32 controlli nominati | Server Next compilato + PostgreSQL temporaneo; firme con SDK Stripe vero e payload sintetici |
 | `npm audit --json` dopo aggiornamento | PASS: 0 vulnerabilità note | info/low/moderate/high/critical tutti zero al momento della verifica; non prova assenza di vulnerabilità sconosciute |
-| Browser desktop/mobile | NON ESEGUITO | Chromium non presente; download del binario non completato. HTTP non dimostra rendering, interazione CAPTCHA o assenza di errori nella console |
-| Provider e dominio pubblicato | NON ESEGUITO | Configurazione autentica, flussi Stripe/Resend/Turnstile/Upstash e cron online ancora da verificare |
+| Browser desktop | PASS limitato | Home e navigazione alla presale verificate nel browser pubblico; immagini, prezzo 25 EUR, taglie, quantità, condizioni e form renderizzati. Nessun ordine inviato, login o CAPTCHA completato |
+| Browser mobile / checkout completo | NON ESEGUITO | Restano layout mobile, token Turnstile effettivo, pagamento TEST, email e rimborso su provider |
+| Dominio pubblico e DB applicativo | PASS smoke online | Dominio HTTPS, API status 200 e pagine pubbliche senza cookie. Questo non verifica ruoli DB, backup, provider finanziari/email o cron |
 | GitHub Actions | PASS sul candidato codice `4d61f8a` | Installazione, audit, verify, integrazione, migrazioni e HTTP completati con successo sul runner remoto; [esecuzione 40304750660](https://github.com/vicente490x/rush-presale/actions/runs/40304750660) |
+
+## Verifica online dopo autorizzazione Vercel
+
+26 ottobre 2026. Team Wrath (`team_SKxnY92xE706MucgyGfoLfmb`), progetto `prj_97dQzkl8OOPj6ZEz8irYoQQFOZxe`. Deployment `dpl_JCsh3WEnSDJHnkusJw5RNfcE5NLX`, commit `b3ff206`, **READY**, target hosting Production. L’applicazione mantiene configurazione staging e banner TEST: il target hosting non implica pagamenti LIVE. Anche il [workflow del commit b3ff206](https://github.com/vicente490x/rush-presale/actions/runs/40305129722) è completato con successo.
+
+Richieste HTTPS reali senza cookie, header di bypass o autenticazione:
+
+| Percorso | Risposta osservata | Esito |
+|---|---|---|
+| `/` | 200, banner TEST, nessun form password | PASS |
+| `/presale` | 200 | PASS |
+| `/api/status` | 200 JSON, 0 pezzi su 15, prezzo 2500 centesimi | PASS, stato DB disponibile |
+| `/admin` | 307 verso `/admin/login` | PASS |
+| `/api/admin/settings` | 401 | PASS |
+| `/anteprima` | 307 verso `/` | PASS |
+
+Dominio: https://rush-presale.vercel.app/ . Header osservati: no-store, noindex sullo staging, CSP con nonce, HSTS, Referrer-Policy no-referrer. Nessuna sessione admin creata, ordine modificato o richiesta finanziaria inviata. Le pagine legali riportano ancora dati venditore da completare. Le variabili dei provider sono presenti come nomi su Vercel, ma i segreti non sono stati decifrati né ne è stata attestata la validità.
+
+Il primo tentativo di browser locale non era riuscito a installare Chromium. La successiva verifica desktop usa il browser remoto e chiude soltanto il controllo di rendering/navigazione sopra descritto; non sostituisce il collaudo del pagamento e di Turnstile.
 
 ## Copertura
 

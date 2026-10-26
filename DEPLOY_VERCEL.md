@@ -6,7 +6,7 @@ Guida corrente del 26 ottobre 2026. Seguire [SECURITY_DEPLOY_CHECKLIST.md](SECUR
 
 Il vecchio staging `2be69ba` aveva stato GitHub Vercel positivo su `wrath5/rush-presale`. Il commit `ed9e464` ha ricevuto `Deployment was blocked` su `vicente-8f24/rush-presale`. Il connettore vede `prj_97dQzkl8OOPj6ZEz8irYoQQFOZxe` nel team `Wrath` (`team_SKxnY92xE706MucgyGfoLfmb`); il deployment fallito dell’altro ambito non è accessibile con questa connessione. Sono riferimenti diversi: uno stato positivo storico non chiude il problema attuale.
 
-È richiesto l’accesso specifico al team Wrath prima di leggere configurazione e log o avviare una build lì. Nessun team trasferito, account aggiunto o piano a pagamento attivato. Il consenso temporaneo va completato dall’account proprietario; non salvare link temporanei di autorizzazione nel repository.
+Accesso al team Wrath ora autorizzato. Verificato il deployment `dpl_JCsh3WEnSDJHnkusJw5RNfcE5NLX`, commit `b3ff206` del branch staging, READY nel target hosting Production e associato a https://rush-presale.vercel.app/ . Il sito si apre senza login Vercel o password RUSH, mentre admin resta autenticato. L’applicazione è ancora in modalità TEST. Nessun team trasferito, account aggiunto o piano a pagamento attivato.
 
 ## Build
 

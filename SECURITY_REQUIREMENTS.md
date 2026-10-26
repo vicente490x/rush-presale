@@ -29,7 +29,7 @@ Versione 26 ottobre 2026. Questo documento è la matrice corrente; i precedenti 
 | SEC-R21 | AI disabilitata, nessun upload foto; riattivazione richiede revisione indipendente | `TRYON_REVIEWED=false`, API status, integrazione | CODICE VERIFICATO |
 | SEC-R22 | Dati venditore/contact e procedura recesso autentici; testi coerenti con i servizi usati | pagine server leggono `lib/seller.ts`; preflight rifiuta dati mancanti | STRUTTURA PRONTA; dati/revisione OPERATIVI |
 | SEC-R23 | Staging noindex; produzione indicizzabile solo secondo configurazione; sito di test mostra banner anche con APP_ENV=production | layout, robots e HTTP | CODICE VERIFICATO |
-| SEC-R24 | Team/progetto/branch/commit corretti; deployment READY, smoke online e procedura rollback verificati | checklist Vercel con ID e commit | OPERATIVO — accesso team necessario |
+| SEC-R24 | Team/progetto/branch/commit corretti; deployment READY, smoke online e procedura rollback verificati | checklist Vercel con ID e commit | READY e smoke pubblico VERIFICATI; rollback e collaudo commerciale OPERATIVI |
 
 ## Regole di accettazione
 
