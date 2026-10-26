@@ -63,7 +63,7 @@ Per build e HTTP staging usare APP_ENV=staging, STAGING_DATABASE_CONFIRMED=true,
 | HTTP Next compilato | 33 controlli nominati PASS, oltre alle asserzioni sui singoli endpoint |
 | Dipendenze | npm audit: zero vulnerabilità note |
 | Link documentazione | PASS, destinazioni locali esistenti |
-| Pipeline remota del candidato | Da associare al commit pubblicato e attendere prima del merge |
+| Pipeline remota del candidato | PASS sul codice `ff34c4b`: [run PR 40310047372](https://github.com/vicente490x/rush-presale/actions/runs/40310047372), installazione, audit, verify, integrazione, migrazioni e HTTP riusciti |
 
 Ambiente locale: Linux in contenitore, Node 24.22.1, PostgreSQL 16.15 temporaneo. L’esecuzione finale segue la rimozione dei moduli fuori perimetro e comprende i nuovi casi SPEC-05/SPEC-08. I controlli provider/online restano separati.
 

@@ -7,8 +7,8 @@
 | Gate | Condizione di uscita | Stato |
 |---|---|---|
 | G1 — Baseline | SPEC letta, matrice tracciata, perimetro definito | Completato |
-| G2 — Candidato tecnico | Pulizia, build, test, migrazioni e audit senza errori bloccanti | Verifica sul candidato 2.1.0 |
-| G3 — Integrazione repository | Staging verificato e main allineato con merge tracciato | Dopo G2 e pipeline remota |
+| G2 — Candidato tecnico | Pulizia, build, test, migrazioni e audit senza errori bloccanti | Completato sul codice candidato ff34c4b |
+| G3 — Integrazione repository | Staging verificato e main allineato con merge tracciato | Stato di integrazione registrato nella PR #2 e nella cronologia Git |
 | G4 — Collaudo pubblico TEST | Deployment READY, smoke anonimo, percorso desktop e servizi TEST reali | Smoke disponibile; flusso provider completo aperto |
 | G5 — Vendita LIVE | Configurazione finale, dati venditore, backup, cron, provider e approvazione commerciale | Aperto |
 
