@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { parseEnv } from 'node:util';
 import { PrismaClient } from '@prisma/client';
+import { verifyPostgresTransport } from '../lib/postgres-transport';
 import { deploymentProblems, type Environment } from '../lib/deployment-config';
 
 type Outcome = 'PASS' | 'FAIL' | 'OPEN';
@@ -34,8 +35,8 @@ async function online(env: Environment) {
         const migrations = await db.$queryRaw<Array<{ migration_name: string; finished: boolean }>>`SELECT migration_name, (finished_at IS NOT NULL AND rolled_back_at IS NULL) AS finished FROM "_prisma_migrations"`;
         const expected = (await readdir('prisma/migrations', { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name);
         const complete = expected.every(name => migrations.some(row => row.migration_name === name && row.finished));
-        // PostgreSQL reports the final hop, which may be behind a TLS pooler.
-        report('database', !complete ? 'FAIL' : rows[0]?.ssl === true ? 'PASS' : 'OPEN', { connected: true, postgresHopTls: rows[0]?.ssl === true, migrationsCurrent: complete, provider: provider(env.DATABASE_URL), ...(!rows[0]?.ssl ? { reason: 'POOLER_OR_POSTGRES_TRANSPORT_REVIEW_REQUIRED' } : {}) });
+        const transport = await verifyPostgresTransport(env.DATABASE_URL);
+        report('database', complete ? 'PASS' : 'FAIL', { connected: true, clientTls: transport, postgresHopTls: rows[0]?.ssl === true, migrationsCurrent: complete, provider: provider(env.DATABASE_URL) });
       } catch { report('database', 'FAIL', { reason: 'CONNECTION_OR_MIGRATION_CHECK_FAILED' }); }
       finally { await db.$disconnect(); }
     })(),
@@ -44,8 +45,8 @@ async function online(env: Environment) {
       const db = new PrismaClient({ datasourceUrl: env.DIRECT_URL, log: [] });
       try {
         const rows = await db.$queryRaw<Array<{ ssl: boolean }>>`SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()`;
-        const tls = rows[0]?.ssl === true;
-        report('database-direct', tls ? 'PASS' : 'OPEN', { connected: true, postgresHopTls: tls, provider: provider(env.DIRECT_URL), ...(!tls ? { reason: 'PROVIDER_TRANSPORT_REVIEW_REQUIRED' } : {}) });
+        const transport = await verifyPostgresTransport(env.DIRECT_URL);
+        report('database-direct', 'PASS', { connected: true, clientTls: transport, postgresHopTls: rows[0]?.ssl === true, provider: provider(env.DIRECT_URL) });
       } catch { report('database-direct', 'OPEN', { reason: 'DIRECT_CONNECTION_NOT_AVAILABLE' }); }
       finally { await db.$disconnect(); }
     })(),

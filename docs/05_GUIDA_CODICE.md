@@ -56,3 +56,9 @@ Next carica l’ambiente delle pagine, mentre i comandi preflight/Prisma leggono
 Le migrazioni applicate non vanno riscritte: aggiungere una nuova migrazione quando cambia il contratto DB. Le mappature storiche ignorate dal client non sono una richiesta di cancellazione delle relative tabelle.
 
 I test con PostgreSQL esercitano le transazioni reali; i servizi Stripe/Resend sono sostituiti da adattatori controllati nei soli runner. Questo consente prove di timeout, concorrenza e doppio evento senza pagamenti o messaggi reali.
+
+## Audit del trasporto PostgreSQL
+
+`lib/postgres-transport.ts` è usato dal solo comando operativo `scripts/release-audit.ts`: invia SSLRequest e negozia TLS con CA/hostname controllati, senza password o query. Gli errori espongono un codice fisso. Il controllo è distinto da `pg_stat_ssl`, che osserva il collegamento interno al backend.
+
+`tests/postgres-transport.test.ts` verifica rifiuto del server senza TLS, contenuto limitato a SSLRequest, timeout e assenza di dettagli sensibili negli errori. `scripts/test-backup.ts` mantiene la prova pg_dump/pg_restore su due database locali temporanei; la prova di snapshot/ripristino effettivo Neon e la configurazione dei branch sono registrate in QA-01 e OPS-TECH-01.

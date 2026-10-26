@@ -104,3 +104,30 @@ Candidato con audit aggiornato: `5dbf6fc`. Deployment di verifica `dpl_3pZhsehQq
 | Backup commerciale | OPEN | La prova pg_dump/pg_restore è locale; snapshot, retention e ripristino Neon effettivi richiedono accesso al provider |
 
 L’audit non ha modificato ordini, schemi, cron, email o pagamenti. I test locali continuano a usare destinazioni temporanee separate. Non sono state abilitate vendite LIVE o cambiate conferme commerciali.
+
+## Collaudo Neon — 26 ottobre 2026
+
+Progetto `holy-bar-39211424` (`rush`), PostgreSQL 18.6. L’identificativo delle condizioni e la revisione letti dal database coincidono con l’API pubblica del sito.
+
+| Controllo | Esito ed evidenza |
+|---|---|
+| Snapshot effettivo | Creato `snap-curly-pond-b4i463rm` dalla sorgente `br-green-haze-b4fwjiqd`; scadenza 2 novembre 2026, 18:00 UTC |
+| Ripristino provider | Ripristinato in `br-small-silence-b4yadi7i`; entrambe le destinazioni risultano READY |
+| Conservazione dati | Confrontati conteggio e impronta aggregata di tutte le 14 tabelle: identici. Conservati l’ordine pendente esistente, importi, termini, ricevute webhook e tre migrazioni |
+| Separazione ambienti | `production` = branch originale e predefinito; `staging` = copia ripristinata collegata all’endpoint attuale del sito TEST |
+| Pianificazione snapshot | OPEN: il provider risponde “backup schedule creation is not enabled for this project”; calendario rimasto vuoto |
+| Autosospensione | Modifica a 300 secondi rifiutata dall’account; configurazione esistente conservata |
+| Privilegi | Ruoli applicativo/migrazione separati non creati; il controllo catalogo conferma zero nuovi ruoli. Serve approvazione della configurazione con privilegi minimi |
+| TLS client | Aggiunta verifica PostgreSQL SSLRequest → handshake TLS con CA/hostname verificati, TLS minimo 1.2, senza inviare credenziali o SQL; esito online nella pipeline di rilascio |
+
+La chiamata di ripristino ha restituito il nuovo branch in circa 10,7 secondi; prontezza e finalizzazione sono state verificate successivamente. Questo intervallo non è un RTO commerciale misurato.
+
+**Nota di esercizio:** la finalizzazione del ripristino ha riassegnato endpoint e nome del branch originale alla copia. Il branch originale è rimasto conservato. Sono stati corretti nomi e branch predefinito; il confronto completo delle 14 tabelle ha confermato l’assenza di differenze nei dati al controllo. Non è stata eseguita alcuna cancellazione, migrazione o sovrascrittura dei record originali. Per una futura prova esclusivamente isolata usare sempre `finalize: false`, senza branch di destinazione esistente, e verificare gli endpoint prima di ogni eventuale finalizzazione.
+
+## Chiusura verifica TLS 2.1.2
+
+Sul deployment del commit `909c71a` entrambi i controlli client sono PASS: protocollo TLS 1.3, certificato e hostname verificati, database raggiungibile e migrazioni aggiornate. `postgresHopTls=false` resta il dato del backend dietro il proxy e non viene classificato come mancata cifratura del collegamento applicativo.
+
+Pipeline push [40347022194](https://github.com/vicente490x/rush-presale/actions/runs/40347022194) e PR [40347046917](https://github.com/vicente490x/rush-presale/actions/runs/40347046917): completate con successo. Validati lint, TypeScript, build, audit, test unitari (33 PASS), integrazione PostgreSQL (37 casi più contenitore), migrazione, backup/ripristino locale e 33 controlli HTTP. I due nuovi casi TLS passano anche nell’esecuzione locale mirata.
+
+Il collaudo provider ha inoltre confermato Stripe TEST/webhook e Redis; restano aperti recapito Resend, flusso cliente completo e prerequisiti LIVE. Le due azioni rifiutate dal provider — calendario snapshot e modifica autosospensione — sono riportate come non eseguite.
