@@ -17,7 +17,7 @@ Esecuzione sul candidato successivo a `ed9e464`, Node 24.22.1, Next 16.4.2, Pris
 | `npm audit --json` dopo aggiornamento | PASS: 0 vulnerabilità note | info/low/moderate/high/critical tutti zero al momento della verifica; non prova assenza di vulnerabilità sconosciute |
 | Browser desktop/mobile | NON ESEGUITO | Chromium non presente; download del binario non completato. HTTP non dimostra rendering, interazione CAPTCHA o assenza di errori nella console |
 | Provider e dominio pubblicato | NON ESEGUITO | Configurazione autentica, flussi Stripe/Resend/Turnstile/Upstash e cron online ancora da verificare |
-| GitHub Actions | CONFIGURATO, ESITO REMOTO DA VERIFICARE | Workflow senza segreti reali; PostgreSQL di servizio isolato e azioni fissate a SHA |
+| GitHub Actions | PASS sul candidato codice `4d61f8a` | Installazione, audit, verify, integrazione, migrazioni e HTTP completati con successo sul runner remoto; [esecuzione 40304750660](https://github.com/vicente490x/rush-presale/actions/runs/40304750660) |
 
 ## Copertura
 

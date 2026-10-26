@@ -10,7 +10,8 @@
 - [x] Migrazioni versionate e prova di aggiornamento conservativo su DB temporaneo.
 - [x] Modelli `.env.staging.example` / `.env.production.example` privi di segreti; file reali ignorati.
 - [x] Workflow GitHub per lint, TypeScript, unità, build, audit, integrazione, migrazioni e HTTP; nessuna chiave reale necessaria.
-- [ ] Controllare la conclusione del workflow sul nuovo commit. Configurare il check come obbligatorio sul branch di rilascio: la presenza del workflow non impedisce da sola il deploy Vercel.
+- [x] Workflow del candidato codice `4d61f8a` eseguito anche su GitHub: installazione, audit, verify, integrazione, migrazioni e HTTP riusciti.
+- [ ] Configurare il check come obbligatorio sul branch di rilascio: la presenza del workflow non impedisce da sola il deploy Vercel.
 
 ## Staging pubblico TEST
 

@@ -24,7 +24,7 @@ Versione 26 ottobre 2026. Questo documento è la matrice corrente; i precedenti 
 | SEC-R16 | HTTPS e cookie HttpOnly/Secure/SameSite, optimizer limitato ai tre asset di marca | configurazione e HTTP; verifica dominio effettivo | CODICE VERIFICATO; HTTPS online OPERATIVO |
 | SEC-R17 | DB staging/produzione separati; TLS con verifica certificato; ruoli minimi, backup e ripristino provato | preflight e migrazioni temporanee | FORMATO VERIFICATO; rete/ruoli/ripristino OPERATIVI |
 | SEC-R18 | Cron autenticato; staging daily dry-run; cleanup sessioni/rate limit scaduti, senza eliminare ordini | `cronAuthorized`, due schedule Vercel, HTTP cleanup | CODICE VERIFICATO; esecuzione online OPERATIVA |
-| SEC-R19 | Dipendenze senza advisory noti alla verifica; build e test ripetibili senza segreti provider | lockfile, npm audit, `.github/workflows/security-tests.yml` | LOCALE VERIFICATO; esito GitHub Actions da verificare |
+| SEC-R19 | Dipendenze senza advisory noti alla verifica; build e test ripetibili senza segreti provider | lockfile, npm audit, `.github/workflows/security-tests.yml` | LOCALE E CI VERIFICATI sul candidato codice 4d61f8a |
 | SEC-R20 | Export sicuro da formula injection; conferma pubblica senza nome/email; log applicativi minimizzati | CSV/XLSX, HTTP lookup, errori fissi | CODICE VERIFICATO; retention/accessi provider OPERATIVI |
 | SEC-R21 | AI disabilitata, nessun upload foto; riattivazione richiede revisione indipendente | `TRYON_REVIEWED=false`, API status, integrazione | CODICE VERIFICATO |
 | SEC-R22 | Dati venditore/contact e procedura recesso autentici; testi coerenti con i servizi usati | pagine server leggono `lib/seller.ts`; preflight rifiuta dati mancanti | STRUTTURA PRONTA; dati/revisione OPERATIVI |

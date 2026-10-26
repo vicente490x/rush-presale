@@ -17,7 +17,7 @@
 - Daily elabora batch limitati: verificare che i volumi reali rientrino nella frequenza/timeout del piano; monitorare `moreDue`, backlog e errori. Nessun cambiamento di piano a pagamento effettuato.
 - Cleanup elimina soltanto sessioni/rate limit e asset temporanei scaduti; retention di ordini, audit, ricevute webhook, outbox e backup deve essere definita. Nessun ordine economico eliminato per accorciare i log.
 - Mancano verifica CDN e protezione hosting effettive. Gli header dell’app non certificano la configurazione del provider.
-- Il workflow GitHub è preparato; per impedire release con controlli falliti servono branch protection/Deployment Checks nel progetto. Non sono stati modificati permessi amministrativi GitHub.
+- Il workflow GitHub è passato sul candidato codice `4d61f8a`; per impedire release con controlli falliti servono branch protection/Deployment Checks nel progetto. Non sono stati modificati permessi amministrativi GitHub.
 - `npm audit` rileva soltanto gli advisory noti al controllo. La patch Zod non è una garanzia generale sulla supply chain.
 - L’AI rimane disabilitata. Riattivarla richiede revisione separata di privacy, storage, provider, cancellazione e quote.
 
