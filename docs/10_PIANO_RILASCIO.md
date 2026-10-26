@@ -1,6 +1,6 @@
 # REL-01 — Piano di rilascio e registro rischi
 
-**Release 2.1.1 · 26 ottobre 2026**
+**Release 2.1.2 · 26 ottobre 2026**
 
 ## Sequenza e gate
 
@@ -82,3 +82,15 @@ Il referente progetto approva deliverable e rapporto di collaudo; il titolare ap
 | Lancio | Completare preflight e checklist prima di impostare le conferme di lancio | G5 chiuso con data, commit e approvazione del titolare |
 
 Il collegamento Stripe disponibile è il sandbox TEST, non un accesso LIVE. Il database è identificato come Neon, ma l’accesso di gestione al provider non è stato ancora collegato. La richiesta di completare il piano non sostituisce dati autentici, accessi o prove effettive.
+
+## Avanzamento Neon 2.1.2
+
+- Accesso di gestione Neon collegato; progetto e database identificati rispetto al sito.
+- Snapshot manuale creato e ripristino effettivo eseguito nel provider; dati di tutte le 14 tabelle e tre migrazioni confrontati senza differenze.
+- Due branch distinti presenti: originale production predefinito e staging usato dal sito TEST.
+- Calendario automatico ancora OPEN: la funzione è rifiutata dall’account/progetto. Non è stato richiesto o attivato un cambio piano.
+- Privilegi runtime minimi e segreti distinti ancora OPEN: ruoli dedicati non aggiunti, approvazione titolare necessaria.
+- Il controllo SQL TLS è affiancato da un handshake con verifica CA/hostname sull’endpoint del client.
+- Dati venditore, Stripe LIVE, email con recapito provato e flusso economico completo restano aperti.
+
+Questi riscontri aggiornano le voci precedenti rimaste aperte per assenza di accesso Neon. Il ripristino manuale è ora provato; la continuità dei backup, i privilegi e l’accettazione commerciale richiedono ancora chiusura esplicita.

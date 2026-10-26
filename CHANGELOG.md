@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2 — 26 ottobre 2026
+
+- Verifica TLS client PostgreSQL con certificato e hostname controllati, distinta dal tratto osservato dietro il proxy Neon.
+- Snapshot e ripristino effettivi nel provider; confronto di tutte le 14 tabelle e separazione dei branch TEST/produzione.
+- Documentati limiti dell’account per snapshot automatici e autosospensione, configurazione dei ruoli ancora da approvare e procedura di ripristino non finalizzato.
+
 ## 2.1.1 — 26 ottobre 2026
 
 - Gestione visibile di errori, scadenze, browser non supportati e attese prolungate della verifica anti-bot; nuovo tentativo disponibile per cliente e amministratore.

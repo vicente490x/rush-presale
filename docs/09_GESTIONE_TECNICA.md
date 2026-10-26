@@ -88,3 +88,20 @@ Questa prova valida la procedura sullo schema applicativo; non certifica backup,
 5. Ripetere smoke e test interessati, poi riaprire il servizio con autorizzazione del responsabile.
 
 Le migrazioni storiche sono conservate. Le strutture non più usate dal client non vanno cancellate automaticamente: la loro dismissione fisica richiede una migrazione successiva con controllo dati e piano di ripristino.
+
+## Configurazione Neon verificata
+
+| Ambiente | Branch | Endpoint |
+|---|---|---|
+| Riserva produzione, non ancora LIVE | `production` / `br-green-haze-b4fwjiqd`, predefinito | `ep-nameless-violet-b4dbasr6` |
+| Sito pubblico TEST | `staging` / `br-small-silence-b4yadi7i` | `ep-sparkling-shape-b4ke4md1` |
+
+Il branch chiamato production contiene ancora lo stato precedente al lancio e un ordine TEST pendente conservato. Non equivale a un database commerciale approvato. Non attivare LIVE senza completare configurazione, credenziali separate e baseline dati effettiva.
+
+Lo snapshot manuale `snap-curly-pond-b4i463rm` è conservato fino al 2 novembre 2026 alle 18:00 UTC. La history retention configurata nel progetto è di 21.600 secondi (6 ore). Snapshot manuale, finestra di ripristino continuo e calendario di snapshot sono funzioni distinte: il calendario automatico non è abilitato per questo progetto. Prima del lancio, il titolare deve abilitare una modalità di backup automatico supportata oppure approvare una procedura esterna con frequenza, retention e destinazione definite; uno snapshot isolato non costituisce una politica continuativa.
+
+Il ripristino di uno snapshot può spostare endpoint e nomi quando viene finalizzato. Per una verifica senza assegnazione del traffico creare la copia con `finalize: false` e nessun `target_branch_id`; confrontare dati e schema, poi decidere separatamente l’assegnazione. Non finalizzare una prova sul servizio attivo.
+
+L’audit TLS effettua anche una negoziazione diretta con lo stesso hostname configurato per Prisma: controlla certificato/hostname, protocollo TLS 1.2 o 1.3 e non invia dati di autenticazione. Il risultato viene riportato come `clientTls`; `postgresHopTls` resta un dato diagnostico del tratto dietro il proxy.
+
+Configurazione dei ruoli da approvare: utente runtime specifico per staging, segreto distinto conservato nelle sole variabili Sensitive di Vercel e privilegi limitati alle operazioni applicative necessarie; nessuna appartenenza al ruolo proprietario per l’utente runtime. L’accesso per migrazioni resta separato. I nuovi ruoli proposti durante il collaudo non sono stati creati.
