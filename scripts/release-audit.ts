@@ -16,6 +16,15 @@ async function jsonRequest(url: string, token: string) {
 
 async function online(env: Environment) {
   // Read-only probes. Never send emails, create sessions, modify jobs or refund.
+  const provider = (value: string | undefined) => {
+    try {
+      const host = new URL(value ?? '').hostname;
+      if (host.endsWith('.supabase.co') || host.endsWith('.supabase.com')) return 'supabase';
+      if (host.endsWith('.neon.tech')) return 'neon';
+      if (host.endsWith('.prisma.io') || host.endsWith('.prisma-data.net')) return 'prisma';
+    } catch { /* Never print connection strings. */ }
+    return 'other';
+  };
   await Promise.all([
     (async () => {
       if (!env.DATABASE_URL) { report('database', 'FAIL', { reason: 'NOT_CONFIGURED' }); return; }
@@ -25,8 +34,19 @@ async function online(env: Environment) {
         const migrations = await db.$queryRaw<Array<{ migration_name: string; finished: boolean }>>`SELECT migration_name, (finished_at IS NOT NULL AND rolled_back_at IS NULL) AS finished FROM "_prisma_migrations"`;
         const expected = (await readdir('prisma/migrations', { withFileTypes: true })).filter(entry => entry.isDirectory()).map(entry => entry.name);
         const complete = expected.every(name => migrations.some(row => row.migration_name === name && row.finished));
-        report('database', complete && rows[0]?.ssl === true ? 'PASS' : 'FAIL', { connected: true, tls: rows[0]?.ssl === true, migrationsCurrent: complete });
+        // PostgreSQL reports the final hop, which may be behind a TLS pooler.
+        report('database', !complete ? 'FAIL' : rows[0]?.ssl === true ? 'PASS' : 'OPEN', { connected: true, postgresHopTls: rows[0]?.ssl === true, migrationsCurrent: complete, provider: provider(env.DATABASE_URL), ...(!rows[0]?.ssl ? { reason: 'POOLER_OR_POSTGRES_TRANSPORT_REVIEW_REQUIRED' } : {}) });
       } catch { report('database', 'FAIL', { reason: 'CONNECTION_OR_MIGRATION_CHECK_FAILED' }); }
+      finally { await db.$disconnect(); }
+    })(),
+    (async () => {
+      if (!env.DIRECT_URL) { report('database-direct', 'OPEN', { reason: 'NOT_CONFIGURED' }); return; }
+      const db = new PrismaClient({ datasourceUrl: env.DIRECT_URL, log: [] });
+      try {
+        const rows = await db.$queryRaw<Array<{ ssl: boolean }>>`SELECT ssl FROM pg_stat_ssl WHERE pid = pg_backend_pid()`;
+        const tls = rows[0]?.ssl === true;
+        report('database-direct', tls ? 'PASS' : 'OPEN', { connected: true, postgresHopTls: tls, provider: provider(env.DIRECT_URL), ...(!tls ? { reason: 'PROVIDER_TRANSPORT_REVIEW_REQUIRED' } : {}) });
+      } catch { report('database-direct', 'OPEN', { reason: 'DIRECT_CONNECTION_NOT_AVAILABLE' }); }
       finally { await db.$disconnect(); }
     })(),
     (async () => {
