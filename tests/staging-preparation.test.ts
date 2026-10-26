@@ -9,21 +9,19 @@ import { enforceRateLimit } from '../lib/ratelimit';
 test('staging credentials preserve literal bcrypt dollars, omit plaintext and use distinct secrets', async () => {
   const admin = 'synthetic-admin-password';
   const gate = 'synthetic-preview-password';
-  const content = await credentialFile(admin, gate);
+  const content = await credentialFile(admin);
   assert.ok(!content.includes(admin)); assert.ok(!content.includes(gate));
   const values = parseEnv(content);
-  assert.ok(values.ADMIN_PASSWORD_HASH); assert.ok(values.STAGING_PASSWORD_HASH);
+  assert.ok(values.ADMIN_PASSWORD_HASH); assert.equal(values.STAGING_PASSWORD_HASH, undefined); assert.equal(values.STAGING_SESSION_SECRET, undefined);
   assert.match(values.ADMIN_PASSWORD_HASH, /^\$2b\$12\$/);
   assert.equal(await bcrypt.compare(admin, values.ADMIN_PASSWORD_HASH), true);
-  assert.equal(await bcrypt.compare(gate, values.STAGING_PASSWORD_HASH), true);
   assert.equal(await bcrypt.compare(gate, values.ADMIN_PASSWORD_HASH), false);
-  const secrets = [values.SESSION_SECRET, values.STAGING_SESSION_SECRET, values.CRON_SECRET];
-  assert.equal(new Set([...secrets, admin, gate]).size, 5);
+  const secrets = [values.SESSION_SECRET, values.CRON_SECRET];
+  assert.equal(new Set([...secrets, admin, gate]).size, 4);
   for (const secret of secrets) { assert.ok(secret); assert.equal(Buffer.from(secret, 'base64url').length, 32); }
-  await assert.rejects(credentialFile(admin, admin), /diverse/);
-  await assert.rejects(credentialFile('x'.repeat(73), gate), /72 byte/);
-  await assert.rejects(credentialFile('short', gate), /16 caratteri/);
-  await assert.rejects(credentialFile(admin + '\n', gate), /controllo/);
+  await assert.rejects(credentialFile('x'.repeat(73)), /72 byte/);
+  await assert.rejects(credentialFile('short'), /16 caratteri/);
+  await assert.rejects(credentialFile(admin + '\n'), /controllo/);
 });
 
 test('explicit staging Prisma file never inherits missing database URLs or expands dollar characters', () => {

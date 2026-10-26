@@ -18,8 +18,8 @@ async function main() {
   // from rewriting the child's bcrypt hash (or loading unrelated local provider keys).
   const env: NodeJS.ProcessEnv = { ...process.env, __NEXT_PROCESSED_ENV: 'true', NODE_ENV: 'production', APP_ENV: 'staging',
     DATABASE_URL: db.toString(), DIRECT_URL: db.toString(), NEXT_PUBLIC_SITE_URL: origin,
-    STAGING_DATABASE_CONFIRMED: 'true', SESSION_SECRET: randomBytes(32).toString('hex'), STAGING_SESSION_SECRET: randomBytes(32).toString('hex'),
-    STAGING_PASSWORD_HASH: await bcrypt.hash(password, 12), ADMIN_PASSWORD_HASH: await bcrypt.hash(randomBytes(24).toString('hex'), 12),
+    STAGING_DATABASE_CONFIRMED: 'true', SESSION_SECRET: randomBytes(32).toString('hex'),
+    ADMIN_PASSWORD_HASH: await bcrypt.hash(randomBytes(24).toString('hex'), 12),
     ADMIN_ID: 'http-test-admin', ADMIN_EMAIL: 'admin@example.com', STRIPE_SECRET_KEY: 'sk_test_http_fixture',
     STRIPE_WEBHOOK_SECRET: randomBytes(32).toString('hex'), CRON_SECRET: randomBytes(32).toString('hex'),
     RESEND_API_KEY: '', MAIL_FROM: '', EMAIL_ALLOWLIST: 'buyer@example.com,admin@example.com', FAL_KEY: '',
@@ -51,25 +51,24 @@ async function main() {
       try { await get('/robots.txt'); ready = true; break; } catch { await new Promise(r => setTimeout(r, 100)); }
     }
     if (!ready) throw new Error('Avvio server locale non riuscito.');
-    const homeLocked = await get('/'); check('staging home gate redirect', () => { assert.equal(homeLocked.status, 307); assert.ok(homeLocked.headers.get('location')?.endsWith('/anteprima')); });
-    const lockedStatus = await get('/api/status'); check('public API protected', () => assert.equal(lockedStatus.status, 401));
+    const publicStatus = await get('/api/status'); check('public API accessible without gate cookie', () => assert.equal(publicStatus.status, 200));
     const robots = await get('/robots.txt'); const robotText = await robots.text(); check('robots noindex', () => assert.ok(robotText.includes('Disallow: /')));
     const webhookNoSignature = await post('/api/stripe/webhook', {}); check('webhook bypasses gate and requires signature', () => assert.equal(webhookNoSignature.status, 400));
     assert.equal((await get('/api/cron/daily')).status, 401);
-    assert.equal((await post('/api/staging/login', { password: 'wrong' })).status, 401);
-    const login = await post('/api/staging/login', { password }); const gateHeader = login.headers.get('set-cookie') ?? '';
-    check('real staging password login with protected cookie', () => { assert.equal(login.status, 200); assert.match(gateHeader, /HttpOnly/i); assert.match(gateHeader, /Secure/i); assert.match(gateHeader, /SameSite=lax/i); });
-    const gate = gateHeader.split(';')[0]; const home = await get('/', gate); const html = await home.text();
-    const gateHtml = await (await get('/anteprima')).text();
+    const retiredLogin = await post('/api/staging/login', { password });
+    check('retired login issues no cookie', () => { assert.equal(retiredLogin.status, 410); assert.equal(retiredLogin.headers.get('set-cookie'), null); });
+    const gate = ''; const home = await get('/'); const html = await home.text();
+    const legacy = await get('/anteprima');
+    check('old preview bookmark redirects home', () => { assert.equal(legacy.status, 307); assert.equal(new URL(legacy.headers.get('location')!, base).pathname, '/'); });
     const adminLoginHtml = await (await get('/admin/login', gate)).text();
     check('SEC-15 login forms use POST and disclose JavaScript requirement before hydration', () => {
-      for (const [markup, action] of [[gateHtml, '/api/staging/login'], [adminLoginHtml, '/api/admin/login']]) {
+      for (const [markup, action] of [[adminLoginHtml, '/api/admin/login']]) {
         const form = markup.match(/<form\b[^>]*>/)?.[0] ?? '';
         assert.ok(form.includes('method="post"')); assert.ok(form.includes(`action="${action}"`));
         assert.ok(markup.includes('<noscript>')); assert.ok(markup.includes('JavaScript'));
       }
     });
-    check('public home branding, noindex and banner after gate', () => { assert.equal(home.status, 200); assert.ok(html.includes('PRE-SALE')); assert.ok(html.includes('PAGAMENTI DI TEST')); assert.ok(home.headers.get('x-robots-tag')?.includes('noindex')); assert.ok(home.headers.get('content-security-policy')?.includes("frame-ancestors 'none'")); });
+    check('public home branding, noindex and banner without a password', () => { assert.equal(home.status, 200); assert.ok(html.includes('PRE-SALE')); assert.ok(html.includes('PAGAMENTI DI TEST')); assert.ok(home.headers.get('x-robots-tag')?.includes('noindex')); assert.ok(home.headers.get('content-security-policy')?.includes("frame-ancestors 'none'")); });
     const presale = await get('/presale', gate); check('presale SSR responds', () => assert.equal(presale.status, 200));
     check('SEC-04 fresh CSP nonce matches every inline script and responses cannot be cached', () => {
       const csp = home.headers.get('content-security-policy') ?? '';
@@ -84,7 +83,7 @@ async function main() {
       assert.equal(home.headers.get('referrer-policy'), 'no-referrer');
     });
     for (const path of ['/privacy', '/cookie', '/termini', '/rimborsi']) assert.equal((await get(path, gate)).status, 200, path);
-    const logo = await get('/_next/image?url=%2Fassets%2Flogo.png&w=640&q=75', gate); check('Next image optimizer serves brand asset behind gate', () => { assert.equal(logo.status, 200); assert.ok(logo.headers.get('content-type')?.startsWith('image/')); });
+    const logo = await get('/_next/image?url=%2Fassets%2Flogo.png&w=640&q=75', gate); check('Next image optimizer serves brand asset without a gate', () => { assert.equal(logo.status, 200); assert.ok(logo.headers.get('content-type')?.startsWith('image/')); });
     for (const url of ['/api/admin/orders', 'https://untrusted.supabase.co/storage/v1/object/sign/test.png']) {
       assert.equal((await get('/_next/image?url=' + encodeURIComponent(url) + '&w=640&q=75')).status, 400);
     }
@@ -93,7 +92,7 @@ async function main() {
       const attempt = await fetch(base + path, { redirect: 'manual', headers: { 'x-middleware-subrequest': 'proxy:proxy:proxy:proxy:proxy' } });
       assert.ok([307, 401].includes(attempt.status));
     }
-    check('framework subrequest header cannot bypass staging/admin protection', () => {});
+    check('framework subrequest header cannot bypass admin protection', () => {});
     assert.equal((await get('/api/admin/settings', gate)).status, 401);
     assert.equal((await get('/admin', gate)).status, 307);
     const adminToken = await createAdminSession();

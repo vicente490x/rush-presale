@@ -14,7 +14,6 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   const { expiryPreview, runExpiry } = await import('../lib/expiry');
   const { initialTerms } = await import('../lib/operational-schema');
   const { createAdminSession, isAdminSession } = await import('../lib/admin-auth');
-  const { createStagingSession, isStagingSession } = await import('../lib/staging-auth');
   let calls = 0;
   let refundMode: 'pending' | 'succeeded' | 'failed' | 'timeout' | 'accepted-timeout' = 'pending';
   let refundList: Stripe.Refund[] = [];
@@ -151,10 +150,6 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     const token = await createAdminSession(); assert.equal(await isAdminSession(token), true);
     await assert.rejects(requireAdmin(new Request('http://localhost/api/admin/settings', { method: 'POST', headers: { cookie: 'rush_admin_session=' + token, origin: 'https://evil.example' } })), /Origine/);
   });
-  await t.test('20 staging session distinct from admin, tampering rejected', async () => {
-    const gate = await createStagingSession(); const admin = await createAdminSession();
-    assert.equal(await isStagingSession(gate), true); assert.equal(await isAdminSession(gate), false); assert.equal(await isStagingSession(admin), false); assert.equal(await isStagingSession(gate + 'x'), false);
-  });
   await reset();
   await t.test('21 quantity/customer limit and 22 validation size/email/checkbox', async () => {
     const { orderInput } = await import('../lib/operational-schema');
@@ -256,10 +251,6 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     process.env.ADMIN_PASSWORD_HASH = 'rotated-fixture-hash';
     assert.equal(await isAdminSession(b), false);
     if (original === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = original;
-    const gate = await createStagingSession(); const oldGate = process.env.STAGING_PASSWORD_HASH;
-    process.env.STAGING_PASSWORD_HASH = 'rotated-gate-fixture-hash';
-    assert.equal(await isStagingSession(gate), false);
-    if (oldGate === undefined) delete process.env.STAGING_PASSWORD_HASH; else process.env.STAGING_PASSWORD_HASH = oldGate;
   });
   await reset();
   await t.test('SEC-03 mismatched, duplicate and excessive refund results roll back financial state', async () => {

@@ -1,3 +1,5 @@
+> Aggiornamento 26 ottobre 2026: accesso pubblico senza password condivisa. Le istruzioni storiche sul gate di staging sono superate; vedere [PUBLIC_ACCESS_RELEASE.md](./PUBLIC_ACCESS_RELEASE.md). Amministrazione ancora protetta.
+
 ---
 noteId: "86aa8780ccac11f1841093d920410d9b"
 tags: []

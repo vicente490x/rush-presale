@@ -30,7 +30,7 @@ test('staging preflight validates format without claiming provider verification'
 
 test('staging preflight rejects local DB, shared secrets, plaintext passwords and legacy mock flags', () => {
   const problems = stagingProblems({ ...fixture(), DATABASE_URL: 'postgresql://audit:secret@localhost/rush',
-    STAGING_DATABASE_CONFIRMED: 'false', STAGING_SESSION_SECRET: 'c'.repeat(40),
+    STAGING_DATABASE_CONFIRMED: 'false', CRON_SECRET: 'c'.repeat(40),
     ADMIN_PASSWORD: 'secret-must-never-appear', STRIPE_MOCK: 'true', ADMIN_EMAIL: 'other@rush.test-provider.net' });
   for (const prefix of ['DATABASE_URL:', 'STAGING_DATABASE_CONFIRMED:', 'Segreti sessione', 'ADMIN_PASSWORD:', 'STRIPE_MOCK:', 'ADMIN_EMAIL:']) {
     assert.ok(problems.some(value => value.startsWith(prefix)), prefix);
@@ -48,4 +48,12 @@ test('staging preflight requires explicit TLS with certificate verification on b
     for (const name of ['DATABASE_URL', 'DIRECT_URL']) assert.ok(problems.some(p => p.startsWith(name + ': richiedere TLS')));
     assert.ok(!problems.join('\n').includes('audit:fixture'));
   }
+});
+
+test('public staging requires no storefront password or gate secret', () => {
+  const env: Record<string, string | undefined> = fixture();
+  delete env.STAGING_PASSWORD_HASH; delete env.STAGING_SESSION_SECRET;
+  assert.deepEqual(stagingProblems(env), []);
+  delete env.ADMIN_PASSWORD_HASH;
+  assert.ok(stagingProblems(env).some(p => p.startsWith('ADMIN_PASSWORD_HASH:')));
 });

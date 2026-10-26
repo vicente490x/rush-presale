@@ -1,2 +1,3 @@
-import { StagingLogin } from '@/components/StagingLogin';
-export default function StagingPage() { return <StagingLogin />; }
+import { redirect } from 'next/navigation';
+
+export default function StagingPage() { redirect('/'); }

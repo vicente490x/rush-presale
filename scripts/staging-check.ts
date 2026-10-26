@@ -45,12 +45,11 @@ export function stagingProblems(env: Environment): string[] {
   require(configured(env.STRIPE_WEBHOOK_SECRET) && /^whsec_[A-Za-z0-9]{24,}$/.test(env.STRIPE_WEBHOOK_SECRET ?? ''), 'STRIPE_WEBHOOK_SECRET: configurare il segreto del webhook TEST di questo staging.');
   require(env.ALLOW_LIVE_PAYMENTS !== 'true', 'ALLOW_LIVE_PAYMENTS: mantenere false.');
   const bcrypt = /^\$2[aby]\$(1[0-6])\$[./A-Za-z0-9]{53}$/;
-  for (const key of ['ADMIN_PASSWORD_HASH', 'STAGING_PASSWORD_HASH']) require(bcrypt.test(env[key] ?? ''), `${key}: generare un hash bcrypt con staging:credentials.`);
+  for (const key of ['ADMIN_PASSWORD_HASH']) require(bcrypt.test(env[key] ?? ''), `${key}: generare un hash bcrypt con staging:credentials.`);
   require(!env.ADMIN_PASSWORD, 'ADMIN_PASSWORD: rimuovere la password in chiaro dalla configurazione staging.');
-  require(!!env.ADMIN_PASSWORD_HASH && !!env.STAGING_PASSWORD_HASH && env.ADMIN_PASSWORD_HASH !== env.STAGING_PASSWORD_HASH, 'Credenziali: usare password admin e anteprima diverse; verificarle con staging:credentials.');
-  const keys = ['SESSION_SECRET', 'STAGING_SESSION_SECRET', 'CRON_SECRET'];
+  const keys = ['SESSION_SECRET', 'CRON_SECRET'];
   for (const key of keys) require(configured(env[key]) && (env[key]?.length ?? 0) >= 32, `${key}: generare almeno 32 caratteri casuali.`);
-  require(keys.every(key => !!env[key]) && new Set(keys.map(key => env[key])).size === keys.length, 'Segreti sessione/anteprima/cron: devono essere distinti.');
+  require(keys.every(key => !!env[key]) && new Set(keys.map(key => env[key])).size === keys.length, 'Segreti sessione/cron: devono essere distinti.');
   require(env.ENABLE_AUTOMATIC_JOBS === 'false', 'ENABLE_AUTOMATIC_JOBS: impostare false.');
   require(env.TRYON_REVIEWED === 'false', 'TRYON_REVIEWED: impostare false per questa demo.');
   require(configured(env.RESEND_API_KEY) && /^re_[A-Za-z0-9_-]{16,}$/.test(env.RESEND_API_KEY ?? ''), 'RESEND_API_KEY: configurare il provider reale.');

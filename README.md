@@ -1,3 +1,5 @@
+> Aggiornamento 26 ottobre 2026: accesso pubblico senza password condivisa. Le istruzioni storiche sul gate di staging sono superate; vedere [PUBLIC_ACCESS_RELEASE.md](./PUBLIC_ACCESS_RELEASE.md). Amministrazione ancora protetta.
+
 # RUSH — PRE-SALE
 
 Progetto esistente Next.js 16 / React 19 / Prisma 6 / PostgreSQL. Logo, mockup, home e stile RUSH sono preservati. SPEC.md è la fonte funzionale; AUDIT.md riporta requisito, implementazione, stato iniziale/finale e test.

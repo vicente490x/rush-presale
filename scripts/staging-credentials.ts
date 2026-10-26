@@ -28,12 +28,11 @@ async function password(label: string) {
   if (value !== await hidden('Ripeti: ')) throw new Error('Le password non coincidono.');
   return value;
 }
-export async function credentialFile(admin: string, gate: string) {
-  for (const value of [admin, gate]) {
+export async function credentialFile(admin: string) {
+  for (const value of [admin]) {
     if (value.length < 16 || Buffer.byteLength(value) > 72 || /\p{Cc}/u.test(value)) throw new Error('Password: minimo 16 caratteri, massimo 72 byte UTF-8 e nessun carattere di controllo.');
   }
-  if (admin === gate) throw new Error('Le due password devono essere diverse.');
-  const used = new Set([admin, gate]);
+  const used = new Set([admin]);
   const secret = () => {
     let value: string;
     do { value = randomBytes(32).toString('base64url'); } while (used.has(value));
@@ -43,16 +42,13 @@ export async function credentialFile(admin: string, gate: string) {
     '# Valori letterali per Vercel Preview e staging:check (nessuna espansione di $).',
     '# Non usare direttamente come .env.local del runtime Next.',
     'ADMIN_ID=rush-admin', 'ADMIN_PASSWORD_HASH=' + await bcrypt.hash(admin, 12),
-    'STAGING_PASSWORD_HASH=' + await bcrypt.hash(gate, 12),
     'SESSION_SECRET=' + secret(),
-    'STAGING_SESSION_SECRET=' + secret(),
     'CRON_SECRET=' + secret(), ''
   ].join('\n');
 }
 async function main() {
   const admin = await password('Password amministratore');
-  const gate = await password('Password condivisa anteprima');
-  const content = await credentialFile(admin, gate);
+  const content = await credentialFile(admin);
   await writeFile('.env.staging.credentials.local', content, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
   console.log('Hash e segreti scritti nel file locale ignorato .env.staging.credentials.local. Nessuna password in chiaro salvata. Copia i valori esclusivamente nelle variabili Vercel Preview; non condividere questo file.');
 }

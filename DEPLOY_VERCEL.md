@@ -1,3 +1,5 @@
+> Aggiornamento 26 ottobre 2026: accesso pubblico senza password condivisa. Le istruzioni storiche sul gate di staging sono superate; vedere [PUBLIC_ACCESS_RELEASE.md](./PUBLIC_ACCESS_RELEASE.md). Amministrazione ancora protetta.
+
 # Preparazione Vercel — staging RUSH
 
 > Procedura consolidata e stato attuale: [STAGING_FINAL_PREPARATION.md](STAGING_FINAL_PREPARATION.md). Il trasferimento del branch può attivare un deploy Git automatico: verificare l'automazione e ottenere autorizzazione prima del push. Il token bypass Vercel ha ambito di progetto, non è tecnicamente ristretto al webhook.

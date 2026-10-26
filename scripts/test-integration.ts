@@ -7,7 +7,7 @@ if (!['localhost', '127.0.0.1'].includes(url.hostname) || !url.pathname.startsWi
 url.searchParams.set('schema', 'audit_' + randomBytes(8).toString('hex'));
 const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: url.toString(), DIRECT_URL: url.toString(), RUSH_ISOLATED_TEST: 'true',
   APP_ENV: 'development', NEXT_PUBLIC_SITE_URL: 'http://localhost:3000', NODE_ENV: 'test',
-  SESSION_SECRET: 'integration-session-secret-at-least-32-characters', STAGING_SESSION_SECRET: 'integration-staging-secret-distinct-32-characters',
+  SESSION_SECRET: 'integration-session-secret-at-least-32-characters',
   STRIPE_SECRET_KEY: 'sk_test_integration_placeholder', STRIPE_WEBHOOK_SECRET: 'integration-signature-secret',
   EMAIL_ALLOWLIST: 'buyer@example.com,admin@example.com', ADMIN_EMAIL: 'admin@example.com',
   RESEND_API_KEY: '', FAL_KEY: '', ENABLE_AUTOMATIC_JOBS: 'false' };
