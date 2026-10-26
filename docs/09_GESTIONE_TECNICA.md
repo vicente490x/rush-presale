@@ -40,9 +40,11 @@ Usare il generatore interattivo `npm run staging:credentials` per hash/segreti e
 
 ## Audit operativo ripetibile
 
-Il comando `npm run release:audit -- --env-file .env.staging.local --online` esegue controlli in sola lettura sui servizi effettivi. Su Vercel usare `npm run release:audit -- --process-env --online`, con le variabili protette già presenti nel deployment. L’output contiene solo esiti, problemi a testo fisso e identificativo account Stripe; non stampa credenziali, URL database, destinatari o risposte provider. I controlli online leggono database/TLS/migrazioni, account e webhook Stripe, domini Resend e PING Redis. Nessuna sessione, email, modifica o rimborso viene creato.
+Il comando `npm run release:audit -- --env-file .env.staging.local --online` esegue controlli in sola lettura sui servizi effettivi. Su Vercel usare `npm run release:audit -- --process-env --online`, con le variabili protette già presenti nel deployment. L’output contiene solo esiti, problemi a testo fisso e identificativo account Stripe; non stampa credenziali, URL database, destinatari o risposte provider. I controlli online leggono database/migrazioni, connessione diretta, TLS osservabile da PostgreSQL, account e webhook Stripe, domini Resend e PING Redis. Nessuna sessione, email, modifica o rimborso viene creato.
 
 L’audit è un rapporto osservativo: termina regolarmente anche se alcuni requisiti sono FAIL/OPEN, così può essere eseguito nella build del sito TEST. Non sostituisce il preflight bloccante `production:check`, il collaudo completo o l’accettazione del titolare. Un token Resend limitato agli invii potrebbe non consentire la lettura dei domini: in quel caso la verifica resta OPEN.
+
+Il valore pg_stat_ssl descrive l’ultimo collegamento al backend PostgreSQL: dietro un pooler TLS non rappresenta necessariamente il tratto applicazione → provider. Un valore false mantiene aperta la verifica del trasporto; confrontare configurazione TLS del client, endpoint diretto e documentazione/impostazioni del provider prima di certificare o modificare il servizio.
 
 ## Verifica anti-bot e browser
 
