@@ -326,6 +326,28 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     assert.equal((await delivery).status, 409);
     assert.notEqual((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).deliveryStatus, 'CONSEGNATA');
   });
+  await t.test('LIVE processor accepts only coherent events after full production configuration', async () => {
+    const { productionFixture } = await import('./fixtures/production-env');
+    const order = await reserveOrder(await input());
+    const original = { ...process.env };
+    const fixture = productionFixture();
+    try {
+      for (const [key, value] of Object.entries(fixture)) if (value !== undefined) process.env[key] = value;
+      const event = { id: 'evt_live_synthetic_' + randomUUID(), type: 'checkout.session.completed', created: Math.floor(Date.now() / 1000), livemode: true,
+        data: { object: { id: 'cs_live_synthetic_' + order.id, livemode: true, mode: 'payment', payment_status: 'paid', amount_total: order.amountCents, currency: order.currency, payment_intent: 'pi_live_synthetic_' + order.id, metadata: { orderId: order.id } } } } as unknown as Stripe.Event;
+      await assert.rejects(processStripeEvent({ ...event, livemode: false }, stripe));
+      await assert.rejects(processStripeEvent({ ...event, data: { object: { ...event.data.object, livemode: false } } } as Stripe.Event, stripe));
+      assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus, 'PENDING');
+      assert.equal(await prisma.stripeWebhookEvent.count({ where: { id: event.id } }), 0);
+      await processStripeEvent(event, stripe);
+      await processStripeEvent(event, stripe);
+      assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).paymentStatus, 'PAID');
+      assert.equal(await prisma.stripeWebhookEvent.count({ where: { id: event.id } }), 1);
+    } finally {
+      for (const key of Object.keys(fixture)) { if (original[key] === undefined) delete process.env[key]; else process.env[key] = original[key]; }
+    }
+  });
+  await reset();
   await t.test('real bcrypt admin login rejects wrong credentials and persists revocable session', async () => {
     const bcrypt = await import('bcryptjs');
     const { POST } = await import('../app/api/admin/login/route');

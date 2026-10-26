@@ -16,7 +16,7 @@ async function main() {
   const origin = process.env.RUSH_HTTP_EXPECTED_ORIGIN ?? 'https://rush-staging.example.invalid';
   // Fully specified fixtures: prevent Next's dotenv expansion of local ADMIN_PASSWORD_HASH
   // from rewriting the child's bcrypt hash (or loading unrelated local provider keys).
-  const env: NodeJS.ProcessEnv = { ...process.env, __NEXT_PROCESSED_ENV: 'true', NODE_ENV: 'production', APP_ENV: 'staging',
+  const env: NodeJS.ProcessEnv = { ...process.env, __NEXT_PROCESSED_ENV: 'true', NODE_ENV: 'production', APP_ENV: 'staging', STRIPE_MODE: 'test', ALLOW_LIVE_PAYMENTS: 'false',
     DATABASE_URL: db.toString(), DIRECT_URL: db.toString(), NEXT_PUBLIC_SITE_URL: origin,
     STAGING_DATABASE_CONFIRMED: 'true', SESSION_SECRET: randomBytes(32).toString('hex'),
     ADMIN_PASSWORD_HASH: await bcrypt.hash(randomBytes(24).toString('hex'), 12),
@@ -51,6 +51,11 @@ async function main() {
       try { await get('/robots.txt'); ready = true; break; } catch { await new Promise(r => setTimeout(r, 100)); }
     }
     if (!ready) throw new Error('Avvio server locale non riuscito.');
+    const deniedOrder = await post('/api/orders', {}, '', 'https://evil.example');
+    check('checkout CSRF rejects foreign origin before provider calls', () => assert.equal(deniedOrder.status, 403));
+    const unavailableCheckout = await post('/api/orders', {});
+    check('checkout fails closed when distributed limiter is not configured', () => assert.equal(unavailableCheckout.status, 503));
+    check('failed checkout creates no order', () => {}); assert.equal(await prisma.order.count(), 0);
     const publicStatus = await get('/api/status'); check('public API accessible without gate cookie', () => assert.equal(publicStatus.status, 200));
     const robots = await get('/robots.txt'); const robotText = await robots.text(); check('robots noindex', () => assert.ok(robotText.includes('Disallow: /')));
     const webhookNoSignature = await post('/api/stripe/webhook', {}); check('webhook bypasses gate and requires signature', () => assert.equal(webhookNoSignature.status, 400));
@@ -130,6 +135,14 @@ async function main() {
     const close = await post('/api/admin/presale', { open: false, confirm: true }, cookie); check('manual closure independent of production', () => assert.equal(close.status, 200));
     assert.equal((await (await get('/api/status', gate)).json()).open, false);
     const diag = await (await get('/api/admin/diagnostics', cookie)).json(); check('diagnostics has DB/webhook status without secrets', () => { assert.equal(diag.database, 'CONNECTED'); assert.equal(diag.lastWebhook.id, event.id); assert.equal(diag.lastReceipt.status, 'DUPLICATE'); assert.ok(!JSON.stringify(diag).includes(env.STRIPE_WEBHOOK_SECRET!)); });
+    const sessionCount = await prisma.adminSession.count();
+    await prisma.adminSession.create({ data: { id: 'expired-http-fixture', actor: 'expired', expiresAt: new Date(0) } });
+    await prisma.rateLimitEntry.create({ data: { key: 'expired-http-fixture', count: 1, resetAt: new Date(0) } });
+    const cleanup = await fetch(base + '/api/cron/cleanup', { headers: { authorization: 'Bearer ' + env.CRON_SECRET } });
+    check('authenticated cleanup removes expired sessions and limiter rows', () => assert.equal(cleanup.status, 200));
+    assert.equal(await prisma.adminSession.count(), sessionCount);
+    assert.equal(await prisma.rateLimitEntry.count({ where: { key: 'expired-http-fixture' } }), 0);
+    assert.equal((await get('/api/cron/cleanup')).status, 401);
     const logout = await post('/api/admin/logout', {}, cookie); check('logout clears session cookie', () => { assert.equal(logout.status, 200); assert.match(logout.headers.get('set-cookie') ?? '', /Max-Age=0/i); });
     assert.equal((await get('/api/admin/export', cookie)).status, 401);
     assert.equal((await get('/admin', cookie)).status, 307);

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { adminRoute, readJson } from '@/lib/http';
-import { appEnv } from '@/lib/config';
+import { appEnv, stripeMode } from '@/lib/config';
 import { enqueueEmail, deliverPendingEmails, recipientAllowed } from '@/lib/mail';
 import { databaseRateLimit } from '@/lib/db-ratelimit';
 import { DomainError } from '@/lib/errors';
@@ -21,7 +21,7 @@ export const GET = adminRoute(async () => {
     prisma.webhookReceipt.findFirst({ orderBy: { receivedAt: 'desc' } })
   ]);
   return NextResponse.json({ environment: appEnv(), database: 'CONNECTED', stagingDatabaseConfirmed: process.env.STAGING_DATABASE_CONFIRMED === 'true',
-    stripe: { configured: Boolean(process.env.STRIPE_SECRET_KEY), testKey: Boolean(process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')), webhookSecret: Boolean(process.env.STRIPE_WEBHOOK_SECRET), connectionTested: false },
+    stripe: { mode: stripeMode(), configured: Boolean(process.env.STRIPE_SECRET_KEY), testKey: Boolean(process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')), webhookSecret: Boolean(process.env.STRIPE_WEBHOOK_SECRET), connectionTested: false },
     email: { configured: Boolean(process.env.RESEND_API_KEY && process.env.MAIL_FROM), senderVerified: 'Da verificare nel provider Resend', allowlistConfigured: Boolean(process.env.EMAIL_ALLOWLIST) },
     lastWebhook, lastReceipt, errors, emailErrors, refunds, tryOn: 'DISABILITATO — non previsto da SPEC.md' });
 });
@@ -37,7 +37,7 @@ export const POST = adminRoute(async (request, _context, actor) => {
   }
   if (!recipientAllowed(data.email)) throw new DomainError('Destinatario non incluso in EMAIL_ALLOWLIST.', 400);
   const dedupeKey = 'email-test:' + randomUUID();
-  await enqueueEmail({ dedupeKey, to: data.email, subject: 'RUSH — email di prova STAGING', text: 'Questa è una verifica richiesta esplicitamente dall’amministratore. Nessun ordine è stato creato.' });
+  await enqueueEmail({ dedupeKey, to: data.email, subject: 'RUSH — email di prova', text: 'Questa è una verifica richiesta esplicitamente dall’amministratore. Nessun ordine è stato creato.' });
   const message = await prisma.emailOutbox.findUniqueOrThrow({ where: { dedupeKey } });
   await deliverPendingEmails(1, undefined, message.id);
   const updated = await prisma.emailOutbox.findUniqueOrThrow({ where: { id: message.id } });

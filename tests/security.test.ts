@@ -3,7 +3,7 @@ import test from 'node:test';
 import { unzipSync, strFromU8 } from 'fflate';
 import { addCalendarMonths } from '../lib/dates';
 import { makeCsv, makeXlsx, csvCell } from '../lib/export';
-import { assertStripeTestMode, appEnv } from '../lib/config';
+import { assertStripeConfiguration, appEnv } from '../lib/config';
 import { recipientAllowed } from '../lib/mail';
 import { readJson } from '../lib/http';
 
@@ -32,8 +32,8 @@ test('staging and production refuse live keys even when legacy opt-in is true', 
   const old = { APP_ENV: process.env.APP_ENV, STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY, ALLOW_LIVE_PAYMENTS: process.env.ALLOW_LIVE_PAYMENTS, STAGING_DATABASE_CONFIRMED: process.env.STAGING_DATABASE_CONFIRMED };
   try {
     process.env.ALLOW_LIVE_PAYMENTS = 'true'; process.env.STRIPE_SECRET_KEY = 'sk_live_test_placeholder';
-    for (const value of ['development', 'staging', 'production']) { process.env.APP_ENV = value; assert.throws(assertStripeTestMode, /TEST/); }
-    process.env.APP_ENV = 'staging'; process.env.STRIPE_SECRET_KEY = 'sk_test_unit_placeholder'; process.env.STAGING_DATABASE_CONFIRMED = 'true'; assert.doesNotThrow(assertStripeTestMode);
+    for (const value of ['development', 'staging', 'production']) { process.env.APP_ENV = value; assert.throws(assertStripeConfiguration, /TEST/); }
+    process.env.APP_ENV = 'staging'; process.env.STRIPE_SECRET_KEY = 'sk_test_unit_placeholder'; process.env.STAGING_DATABASE_CONFIRMED = 'true'; assert.doesNotThrow(assertStripeConfiguration);
   } finally { for (const [k, v] of Object.entries(old)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
 });
 test('nonproduction mail requires an exact explicitly allowlisted recipient', () => {

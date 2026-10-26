@@ -16,6 +16,7 @@ try {
     env = stagingPrismaEnvironment(contents, process.env);
   } else {
     loadEnvConfig(process.cwd());
+    if (process.env.APP_ENV === 'production') throw new Error('Per produzione serve --env-file esplicito; consentiti solo validate, migrate status e migrate deploy.');
     if ((process.env.APP_ENV === 'staging' || process.env.APP_ENV === 'preview') && process.env.STAGING_DATABASE_CONFIRMED !== 'true') throw new Error('Confermare il database staging indipendente prima di usare Prisma.');
   }
   const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', ...args], { env, stdio: 'inherit' });

@@ -1,8 +1,12 @@
 import Stripe from 'stripe';
-import { assertStripeTestMode } from '@/lib/config';
+import { assertStripeConfiguration } from '@/lib/config';
 let client: Stripe | undefined;
+let clientKey: string | undefined;
 export function stripeClient() {
-  assertStripeTestMode();
-  client ??= new Stripe(process.env.STRIPE_SECRET_KEY!, { timeout: 8000, maxNetworkRetries: 1 });
+  assertStripeConfiguration();
+  if (!client || clientKey !== process.env.STRIPE_SECRET_KEY) {
+    clientKey = process.env.STRIPE_SECRET_KEY!;
+    client = new Stripe(clientKey, { timeout: 8000, maxNetworkRetries: 1 });
+  }
   return client;
 }

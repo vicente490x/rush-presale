@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { assertStripeEventMode, stripeMode } from '@/lib/config';
 import { prisma } from '@/lib/prisma';
 import { lockSettings } from '@/lib/db-lock';
 import { settings } from '@/lib/settings';
@@ -8,7 +9,7 @@ import { applyRefunds, refundState } from '@/lib/refunds';
 import { DomainError } from '@/lib/errors';
 
 export async function processStripeEvent(event: Stripe.Event, stripe: Stripe) {
-  if (event.livemode) throw new DomainError('Eventi live non consentiti.', 400);
+  assertStripeEventMode(event.livemode);
   await settings();
   let refundOrderId: string | undefined;
   let refunds: Stripe.Refund[] | undefined;
@@ -43,7 +44,7 @@ export async function processStripeEvent(event: Stripe.Event, stripe: Stripe) {
       if (id && session.payment_status === 'paid') {
         const order = await tx.order.findUniqueOrThrow({ where: { id } });
         const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
-        if (session.livemode || session.mode !== 'payment' || session.amount_total !== order.amountCents || session.currency !== order.currency || !pi ||
+        if (Boolean(session.livemode) !== (stripeMode() === 'live') || session.mode !== 'payment' || session.amount_total !== order.amountCents || session.currency !== order.currency || !pi ||
             (order.stripeSessionId && order.stripeSessionId !== session.id) || (order.stripePaymentIntentId && order.stripePaymentIntentId !== pi)) throw new DomainError('Pagamento incoerente con ordine.', 400);
         if (order.paymentStatus !== 'PAID') {
           const paidAt = new Date(event.created * 1000);

@@ -1,3 +1,5 @@
+> **Stato corrente del 26 ottobre 2026:** questo documento conserva evidenze storiche. Per requisiti ed esiti del candidato attuale vedere [SECURITY_REQUIREMENTS.md](SECURITY_REQUIREMENTS.md), [SECURITY_TEST_RESULTS.md](SECURITY_TEST_RESULTS.md) e [SECURITY_DEPLOY_CHECKLIST.md](SECURITY_DEPLOY_CHECKLIST.md). Il gate condiviso è rimosso e LIVE è ora supportato con guard di produzione; le precedenti istruzioni TEST-only o di mancata autorizzazione al lavoro sono storiche.
+
 # STAGING REPORT — RUSH PRE-SALE
 
 > Per il candidato corrente e le procedure consolidate usare [STAGING_FINAL_PREPARATION.md](STAGING_FINAL_PREPARATION.md): verifica delle patch, correzione timeout Upstash/form POST, 19 unitari, 35 integrazione, 28 HTTP PASS. Nessun deploy o servizio remoto configurato.

@@ -1,41 +1,24 @@
----
-noteId: "461cd4c0cc8411f1a8d8071bcfefd596"
-tags: []
+# Rischi e requisiti operativi ancora aperti
 
----
+26 ottobre 2026. I test locali correnti sono in [SECURITY_TEST_RESULTS.md](SECURITY_TEST_RESULTS.md); criteri di rilascio in [SECURITY_REQUIREMENTS.md](SECURITY_REQUIREMENTS.md).
 
-# RUSH PRE-SALE — Rischi residui
+## Bloccanti per la dichiarazione online/commerciale
 
-> Aggiornamento di chiusura: [STAGING_FINAL_PREPARATION.md](STAGING_FINAL_PREPARATION.md). SEC-14/SEC-15 corretti; procedura di esclusione delle refs interne verificata. Il conteggio di 28 requisiti sotto appartiene al vecchio controllo sul file di sviluppo; il nuovo file dedicato è incompleto e il preflight autentico non è stato eseguito. SEC-12 richiede ancora conferma del proprietario sul riuso delle password.
+1. **Vercel:** accesso al team `Wrath` ancora 403. Il progetto visibile appartiene a un ambito diverso dal deployment `vicente-8f24` bloccato sul precedente push. Occorre autorizzare il team corretto e verificare commit, branch, log, ambiente e READY. Nessun rebuild remoto è dichiarato completato.
+2. **Configurazione autentica:** DB/TLS/ruoli/backup e prova ripristino, Stripe e webhook, Resend/mittente, Turnstile/hostname e Upstash devono essere verificati nei rispettivi provider. Una fixture valida o un flag CONFIRMED non prova questi requisiti.
+3. **Dati del venditore:** ragione sociale/nome, sede, identificativo fiscale, contatti privacy/assistenza e procedura di recesso devono essere forniti e verificati dal titolare. Sono campi server configurabili, non dati inventati. Le pagine aggiornate non costituiscono una revisione legale.
+4. **Collaudo browser/online:** esecuzione desktop/mobile, console/CSP, CAPTCHA, Checkout TEST e ritorno, email, rimborsi e cron sul dominio effettivo restano aperti. Il tentativo di preparare Chromium non è riuscito; non è stata eseguita verifica visuale.
+5. **Segreti e cron:** usare password admin nuova e segreti distinti per ambiente. Il precedente audit citava un hash SQLite storico locale: questa esecuzione non ha a disposizione quella storia locale e non ne ricertifica la gestione. Se la password è stata riutilizzata, sostituirla. Verificare scheduler e monitoraggio prima di promettere rimborsi automatici in produzione.
 
-20 ottobre 2026 — **SECURITY NOT READY FOR STAGING**.
+## Limiti residui del progetto
 
-## Blocchi alla dichiarazione READY
+- Il lock globale evita gare su stock/pagamenti/produzione ma limita il throughput; test di carico e dimensionamento del pool non eseguiti.
+- Rimborsi e email con esito ambiguo oltre 23 ore richiedono riconciliazione manuale. L’idempotenza limita duplicazioni, non sostituisce il controllo del provider.
+- Daily elabora batch limitati: verificare che i volumi reali rientrino nella frequenza/timeout del piano; monitorare `moreDue`, backlog e errori. Nessun cambiamento di piano a pagamento effettuato.
+- Cleanup elimina soltanto sessioni/rate limit e asset temporanei scaduti; retention di ordini, audit, ricevute webhook, outbox e backup deve essere definita. Nessun ordine economico eliminato per accorciare i log.
+- Mancano verifica CDN e protezione hosting effettive. Gli header dell’app non certificano la configurazione del provider.
+- Il workflow GitHub è preparato; per impedire release con controlli falliti servono branch protection/Deployment Checks nel progetto. Non sono stati modificati permessi amministrativi GitHub.
+- `npm audit` rileva soltanto gli advisory noti al controllo. La patch Zod non è una garanzia generale sulla supply chain.
+- L’AI rimane disabilitata. Riattivarla richiede revisione separata di privacy, storage, provider, cancellazione e quote.
 
-**HIGH operativo — SEC-13.** La configurazione locale è di sviluppo e fallisce 28 requisiti. Mancano evidenze del DB gestito separato, credenziali staging, Stripe TEST reale, webhook attraverso hosting, CAPTCHA e rate limit distribuito. I test double non dimostrano il funzionamento dei servizi. Responsabile della chiusura: proprietario dello staging, con le verifiche della checklist.
-
-**MEDIUM — SEC-12.** Una ref tree locale contiene un SQLite con hash admin; non risulta nella cronologia branch/tag/remote esaminata. Non è stato trasferito, cancellato o riscritto. Non condividere la ref, usare nuove credenziali staging e sostituire la vecchia password se ancora valida altrove, invalidandone le sessioni. Il mancato riuso non è dimostrabile da questo audit.
-
-**Verifica browser assente.** Nessun browser collegato. HTTP dimostra risposte, nonce e header, non funzionamento di Turnstile, React, animazioni, flussi utente o CSP nel browser. Completare prima della demo.
-
-## Limiti e rischi gestibili
-
-- **Sessioni:** letture DB aggiuntive su proxy e handler/page; indisponibilità DB blocca l'admin. Dimensionare pool e provare login dopo migrazione/rotazione. Il gate condiviso non ha revoca individuale: cambiarne hash/password o segreto invalida tutte le sessioni.
-- **Rate limit:** fuori Vercel il bucket condiviso impedisce spoofing ma può bloccare più utenti insieme. Non impostare VERCEL=1 su hosting diretto; altre piattaforme richiedono politica esplicita di proxy fidati.
-- **Disponibilità:** il lock globale serializza operazioni finanziarie e può essere tenuto durante una chiamata Stripe. Evita gare di stato ma limita throughput; timeout, carico e limiti hosting vanno misurati. Nessun test di carico.
-- **Webhook/log:** le firme errate non creano righe DB, ma consumano ancora CPU/log provider. Verificare limiti di piattaforma compatibili con retry legittimi.
-- **Retention:** vercel.json pianifica solo daily. Cleanup sessioni/rate limit e conservazione di ordini, outbox, ricevute e audit richiedono pianificazione. Nessun dato economico cancellato automaticamente per risolvere questo punto.
-- **Finanza:** intenti ambigui oltre 23 ore richiedono riconciliazione manuale. I rimborsi parziali esterni sono registrati; la UI rimborsa il residuo completo e i pezzi vengono esclusi dal contatore solo al rimborso totale. Confermare la politica commerciale.
-- **Email:** outbox/lease/idempotenza riducono duplicati, ma la garanzia reale dipende dal provider. Invii ambigui oltre 23 ore fermati per revisione: possibile ritardo invece di reinvio cieco.
-- **Ordini pubblici:** nuovi codici casuali da 128 bit e risposta minimizzata; eventuali codici legacy più corti restano riconosciuti. Non aggiungere PII; valutare migrazione codici prima di importare dati reali.
-- **CSP:** stili inline ammessi, eval soltanto in sviluppo. Non esporre `next dev` come staging. Rendering dinamico/no-store ha un costo prestazionale.
-- **AI:** disabilitata. Limiti e cleanup preparati, ma cancellazione effettiva, oggetti assenti, bucket, privacy/provider e scheduler non verificati. Non attribuire una validazione end-to-end alle sole patch locali.
-- **Supply chain:** npm audit/advisory fotografano il 20 ottobre; zero segnalazioni non esclude vulnerabilità sconosciute. Nessuna ricostruzione completa dei pacchetti o audit formale della loro provenienza.
-- **Segreti:** pattern e confronto dei valori locali nei bundle non coprono ogni formato o copia esterna. Il file di sviluppo ignorato non è adatto allo staging e non va caricato su Vercel.
-- **Privacy:** contratti, ruoli fornitori, retention legale, informative e procedure degli interessati richiedono revisione organizzativa/legale; nessuna attestazione GDPR.
-
-## Stato delle azioni
-
-Completate le patch locali individuate e le regressioni disponibili. Nessuna vulnerabilità CRITICAL/HIGH di codice rilevata resta senza correzione; rimangono il rischio HIGH operativo e verifiche critiche mancanti.
-
-Nessun servizio esterno configurato, credenziale revocata, dato applicativo eliminato, deploy/push o transazione reale. Attività con credenziali, infrastruttura o gestione della cronologia sono preparate nella checklist e restano da autorizzare quando si procederà.
+**Verdetto: candidato verificato localmente, requisiti esterni ancora aperti. Nessuna vendita LIVE attivata.**

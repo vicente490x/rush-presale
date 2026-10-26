@@ -1,5 +1,6 @@
 import { NextResponse, after } from 'next/server';
 import Stripe from 'stripe';
+import { assertStripeEventMode } from '@/lib/config';
 import { stripeClient } from '@/lib/stripe';
 import { processStripeEvent } from '@/lib/stripe-events';
 import { logError } from '@/lib/errors';
@@ -15,11 +16,11 @@ export async function POST(request: Request) {
   try {
     const raw = await readBytes(request, 1048576);
     event = stripeClient().webhooks.constructEvent(raw, signature, process.env.STRIPE_WEBHOOK_SECRET);
-    if (event.livemode) return NextResponse.json({ error: 'Eventi live non consentiti.' }, { status: 400 });
+    assertStripeEventMode(event.livemode);
   } catch {
     // Unauthenticated traffic must not create persistent database records.
     console.warn('STRIPE_WEBHOOK_REJECTED');
-    return NextResponse.json({ error: 'Firma webhook non valida o Stripe TEST non configurato.' }, { status: 400 });
+    return NextResponse.json({ error: 'Firma webhook non valida o modalità Stripe non configurata.' }, { status: 400 });
   }
   let receiptId: string | undefined;
   try {

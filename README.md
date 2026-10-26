@@ -1,70 +1,45 @@
-> Aggiornamento 26 ottobre 2026: accesso pubblico senza password condivisa. Le istruzioni storiche sul gate di staging sono superate; vedere [PUBLIC_ACCESS_RELEASE.md](./PUBLIC_ACCESS_RELEASE.md). Amministrazione ancora protetta.
+# RUSH PRE-SALE
 
-# RUSH — PRE-SALE
+Sito Next.js per la pre-sale delle magliette RUSH, con PostgreSQL/Prisma, Checkout Stripe ospitato, email Resend, Turnstile e rate limit Upstash. Il sito pubblico non richiede una password; `/admin` rimane autenticato. La prova virtuale AI è disabilitata.
 
-Progetto esistente Next.js 16 / React 19 / Prisma 6 / PostgreSQL. Logo, mockup, home e stile RUSH sono preservati. SPEC.md è la fonte funzionale; AUDIT.md riporta requisito, implementazione, stato iniziale/finale e test.
+Staging usa pagamenti TEST e email autorizzate. Produzione può usare LIVE soltanto con ambiente, chiavi, database, provider e conferme di lancio coerenti. Nessun segreto operativo è incluso nel repository.
 
-La preparazione riguarda una demo privata con **Stripe esclusivamente TEST**. Le chiavi live sono rifiutate dal codice. Nessun deploy o modifica di servizi esterni è stato eseguito. Leggere il verdetto in [STAGING_REPORT.md](STAGING_REPORT.md) prima di presentare il progetto come pronto.
+## Documentazione corrente
 
-## Documentazione
+- [Requisiti di sicurezza](SECURITY_REQUIREMENTS.md)
+- [Checklist di pubblicazione](SECURITY_DEPLOY_CHECKLIST.md)
+- [Test eseguiti e limiti](SECURITY_TEST_RESULTS.md)
+- [Rischi aperti](SECURITY_REMAINING_RISKS.md)
+- [Deploy Vercel](DEPLOY_VERCEL.md) · [Configurazione Stripe](STRIPE_SETUP.md)
 
-- [AUDIT.md](AUDIT.md): requisiti SPEC e richieste aggiuntive, problemi e verifiche.
-- [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md): repository privato, database separato, credenziali, variabili Preview, protezione, deploy autorizzato e rollback.
-- [STRIPE_SETUP.md](STRIPE_SETUP.md): route reale `/api/stripe/webhook`, eventi test, prova completa e riconciliazione.
-- [STAGING_REPORT.md](STAGING_REPORT.md): risultati effettivi e verifiche ancora da eseguire.
+## Sviluppo e verifica
 
-## Sviluppo locale
+Node 24 e PostgreSQL. Per sviluppo, compilare un file ambiente locale ignorato da Git partendo da `.env.example`; non usare credenziali o ordini commerciali. Installare con `npm ci` e generare il client Prisma con `npm run db:generate` se necessario. Configurare DB e origine prima di avviare `npm run dev`.
 
-Node 22/24 supportati (verificato con Node 24.21.0); PostgreSQL richiesto. Su Windows con restrizioni PowerShell usare `npm.cmd` al posto di `npm`.
-
-```powershell
-npm ci
-npm run dev
-```
-
-Next carica `.env.local`, ignorato da Git. Se manca, partire da `.env.example` e compilare le variabili: non sovrascrivere una configurazione esistente. L'eventuale script `scripts/setup-local-postgres.ps1` modifica un DB locale dedicato e chiede la password PostgreSQL: leggerlo prima di eseguirlo. Non è stato eseguito durante questo audit; i test hanno usato un cluster temporaneo diverso.
-
-Per creare un nuovo admin locale usare `npm run admin:setup` nel proprio terminale: salva hash e segreto in `.env.local` senza mostrarli. Il bypass Turnstile per il solo login admin locale richiede APP_ENV=development, hostname localhost e modalità non-production. Non esiste bypass del pagamento o della firma Stripe. Il checkout richiede sempre configurazione Stripe TEST, Turnstile e Upstash.
-
-- Home: http://localhost:3000
-- PRE-SALE: http://localhost:3000/presale
-- Login amministratore: http://localhost:3000/admin/login
-- Dashboard: /admin
-- Impostazioni: /admin/impostazioni
-- Gate staging: /anteprima
-
-Per generare credenziali staging senza password in chiaro: `npm run staging:credentials`. Usare `.env.staging.example` e la procedura Vercel; non impostare APP_ENV=staging su un database che contiene clienti.
-
-## Verifiche
-
-```powershell
-npm run db:validate
-npm run db:generate
-npm run typecheck
+```sh
 npm run lint
+npm run typecheck
 npm test
 npm run build
 ```
 
-`lint` è ESLint (TypeScript/React Hooks), distinto dal typecheck. Postinstall e build generano soltanto Prisma Client: nessuna migrazione o seed automatico.
+`npm run verify` esegue i quattro controlli in sequenza con l’ambiente configurato. L’integrazione usa esclusivamente un database locale temporaneo denominato `rush_audit*`, indicato da `RUSH_TEST_DATABASE_URL`:
 
-I test con database richiedono una connessione PostgreSQL temporanea su localhost, con nome `rush_audit*`:
-
-```powershell
-$env:RUSH_TEST_DATABASE_URL='postgresql://UTENTE@127.0.0.1:PORTA/rush_audit_test'
-npm run test:migration
+```sh
 npm run test:integration
+npm run test:migration
 npm run test:http
 ```
 
-Ogni esecuzione crea uno schema nuovo; il DB dell'app non viene usato. Stripe e Resend sono test double dichiarati. La suite HTTP avvia la build di produzione su 127.0.0.1:3100, poi la arresta; richiede la build/origine test descritta in DEPLOY_VERCEL.md. Non equivale al test visivo in un browser o al checkout esterno.
+Il test HTTP richiede prima una build staging compilata con l’origine indicata in `SECURITY_TEST_RESULTS.md`. Ogni runner crea uno schema casuale, conservato per ispezione nel DB temporaneo. Il workflow GitHub crea il proprio PostgreSQL isolato e non riceve segreti provider.
 
-## Logica e limiti
+## Preparazione del rilascio
 
-Prezzo iniziale 25 EUR, soglia 15, taglie XS–XXL, durata due mesi calendario e preavviso sette giorni sono default nel DB. Le impostazioni operative si modificano dall'admin. Soglia minima e disponibilità sono indipendenti; superare la soglia non chiude la PRE-SALE.
+Usare i modelli `.env.staging.example` / `.env.production.example` senza committare i file reali. I controlli seguenti leggono soltanto il file esplicito e non contattano provider:
 
-Il checkout crea prima PENDING e salva uno snapshot di prezzo, quantità, condizioni, consegna e durata. Solo eventi Stripe verificati confermano il pagamento. La pagina di successo legge lo stato. Gli ordini pagati non cambiano quando cambia il listino.
+```sh
+npm run staging:check -- --env-file .env.staging.local
+npm run production:check -- --env-file .env.production.local
+```
 
-I rimborsi restano PENDING fino a esito Stripe confermato, con chiavi e riconciliazione persistenti. L'avvio produzione ha un timestamp irreversibile e non riapre la condizione di rimborso automatico. I cron staging eseguono dry-run; l'admin può autorizzare esplicitamente un controllo TEST.
-
-Le email non-production sono limitate alla allowlist. La prova AI è esclusa perché non prevista da SPEC.md; il codice precedente è conservato ma non è presentato come attivo nella demo. Le pagine legali contengono ancora dati del venditore da completare prima di qualsiasi attività commerciale. Nessuna autorizzazione a pagamenti reali è implicita in questo lavoro.
+Zero errori significa formato coerente; non certifica account, credenziali, dominio o stato del database. Applicare le migrazioni alla destinazione confermata prima del deploy, secondo la checklist. Il consenso e la configurazione effettiva di Stripe LIVE non sono sostituiti dai test con fixture.

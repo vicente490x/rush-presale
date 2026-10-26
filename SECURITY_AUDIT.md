@@ -1,3 +1,5 @@
+> **Stato corrente del 26 ottobre 2026:** questo documento conserva evidenze storiche. Per requisiti ed esiti del candidato attuale vedere [SECURITY_REQUIREMENTS.md](SECURITY_REQUIREMENTS.md), [SECURITY_TEST_RESULTS.md](SECURITY_TEST_RESULTS.md) e [SECURITY_DEPLOY_CHECKLIST.md](SECURITY_DEPLOY_CHECKLIST.md). Il gate condiviso è rimosso e LIVE è ora supportato con guard di produzione; le precedenti istruzioni TEST-only o di mancata autorizzazione al lavoro sono storiche.
+
 ---
 noteId: "44f8a010cc8411f1a8d8071bcfefd596"
 tags: []

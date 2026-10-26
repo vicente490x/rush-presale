@@ -1,57 +1,44 @@
----
-noteId: "45d9b140cc8411f1a8d8071bcfefd596"
-tags: []
+# Checklist di pubblicazione RUSH PRE-SALE
 
----
+26 ottobre 2026. Fonte corrente: [requisiti di sicurezza](SECURITY_REQUIREMENTS.md) e [risultati effettivi](SECURITY_TEST_RESULTS.md). Le istruzioni storiche sul gate condiviso non si applicano più.
 
-# RUSH PRE-SALE — Checklist prima della pubblicazione
+## Codice e controlli
 
-> Procedura consolidata, nomi variabili, comandi Git con refspec esplicito e Prisma `--env-file`: [STAGING_FINAL_PREPARATION.md](STAGING_FINAL_PREPARATION.md). Il nuovo file staging è solo un modello ignorato; preflight autentico e conferma proprietario SEC-12 restano aperti.
+- [x] Accesso pubblico senza password e backoffice autenticato separatamente.
+- [x] Revoca sessioni, CSRF, validazione input, rate limit fail-closed e Turnstile server-side.
+- [x] Stripe TEST/LIVE separati; opt-in LIVE multiplo e coerente, verificato con fixture.
+- [x] Migrazioni versionate e prova di aggiornamento conservativo su DB temporaneo.
+- [x] Modelli `.env.staging.example` / `.env.production.example` privi di segreti; file reali ignorati.
+- [x] Workflow GitHub per lint, TypeScript, unità, build, audit, integrazione, migrazioni e HTTP; nessuna chiave reale necessaria.
+- [ ] Controllare la conclusione del workflow sul nuovo commit. Configurare il check come obbligatorio sul branch di rilascio: la presenza del workflow non impedisce da sola il deploy Vercel.
 
-20 ottobre 2026. **Nessun deploy autorizzato o eseguito da questo audit.** Le caselle vuote richiedono evidenza operativa; questa checklist non concede autorizzazione a modificare infrastrutture.
+## Staging pubblico TEST
 
-## Repository e credenziali
+- [ ] Confermare team e progetto prima del rebuild: nei riferimenti esistenti compaiono due progetti `rush-presale`, uno `Wrath/wrath5` e uno `vicente-8f24`. Non trasferire o cancellare progetti per tentativi.
+- [ ] Usare il commit aggiornato di `staging`, scope Vercel Preview, `APP_ENV=staging`, `STRIPE_MODE=test`, `ALLOW_LIVE_PAYMENTS=false`.
+- [ ] `NEXT_PUBLIC_SITE_URL` deve corrispondere all’origine HTTPS stabile usata nel browser e in Turnstile. Non aggiungere path, userinfo, query o hash.
+- [ ] Configurare DB staging indipendente, pool runtime e URL diretto; TLS `sslmode=require&sslaccept=strict`; impostare `STAGING_DATABASE_CONFIRMED=true` solo dopo controllo effettivo.
+- [ ] Inserire nuova password admin come hash bcrypt 12–16, `SESSION_SECRET` e `CRON_SECRET` nuovi e distinti, `ADMIN_EMAIL`, Stripe TEST/webhook, Turnstile, Upstash e Resend con mittente verificato e `EMAIL_ALLOWLIST` esatta.
+- [ ] Mantenere `ENABLE_AUTOMATIC_JOBS=false`, `TRYON_REVIEWED=false`. `STAGING_PASSWORD_HASH` e `STAGING_SESSION_SECRET` non sono più usati e possono essere rimossi.
+- [ ] Eseguire `npm run staging:check -- --env-file .env.staging.local` sull’ambiente autentico; zero problemi di formato richiesti.
+- [ ] Applicare le tre migrazioni allo staging confermato con `npm run db:migrate -- --env-file .env.staging.local`, quindi `node --import tsx scripts/prisma-cli.ts migrate status --env-file .env.staging.local`.
+- [ ] Distribuire l’ultimo commit, verificare READY e aprire `/`, `/presale`, informative e logo senza cookie. `/anteprima` deve rimandare a `/`; `/admin` deve chiedere il login; `/api/admin/settings` senza cookie deve rispondere 401.
+- [ ] Se compare la schermata Vercel Authentication, verificare Deployment Protection nel progetto corretto. Il webhook Stripe e i cron devono poter raggiungere l’app; non rimuovere autenticazione admin o firma webhook per risolverlo.
+- [ ] In browser desktop/mobile verificare CAPTCHA, form, errori, annullamento pagamento, conferma, dashboard, export e logout; controllare console/CSP.
+- [ ] Completare un ordine Stripe TEST, verificare evento firmato PAID, email, duplicato webhook, rimborso TEST e aggiornamento contatori.
 
-- [x] Patch locali e regression test completati; report disponibili.
-- [x] `.env*` reali, database, backup, build e log esclusi dal tracciamento ordinario.
-- [x] Dipendenze corrette, lockfile coerente e audit npm finale senza segnalazioni.
-- [ ] Confermare che la password admin del vecchio SQLite non sia riutilizzata; altrimenti sostituirla e invalidare le sessioni interessate.
-- [ ] Controllare il diff da condividere. Trasferire soltanto il branch revisionato; mai refs interne `refs/codex/turn-diffs/*`, push mirror o archivio completo della directory `.git`.
-- [ ] Preparare password admin/anteprima nuove e diverse, bcrypt costo 12, tre segreti casuali distinti per admin/gate/cron. Usare `npm.cmd run staging:credentials` interattivamente; non condividere il file generato.
-- [ ] Su Vercel inserire gli hash letteralmente, conservando `$`; non confondere l'escape dotenv con le variabili del provider.
-- [ ] Rimuovere password in chiaro e vecchi flag mock. Nessuna `NEXT_PUBLIC_*` con segreti; solo URL sito e site key pubblica Turnstile.
+## Produzione commerciale
 
-## Database e ambiente
+- [ ] Scegliere il progetto/dominio finale e un DB produzione separato. Configurare backup/ripristino, privilegi runtime minimi e URL diretto per migrazioni. Non importare ordini di test come vendite.
+- [ ] Compilare `.env.production.example` nel provider. `PRODUCTION_DATABASE_CONFIRMED`, `LEGAL_REVIEW_CONFIRMED`, `PRODUCTION_LAUNCH_CONFIRMED` diventano true solo quando i rispettivi controlli sono completati.
+- [ ] Inserire dati autentici: `SELLER_NAME`, `SELLER_ADDRESS`, `SELLER_TAX_ID`, `PRIVACY_EMAIL`, `SUPPORT_EMAIL`, `WITHDRAWAL_POLICY`. Verificare informative, recesso, consegna, conservazione e condizioni commerciali; nessun dato è stato inventato.
+- [ ] Configurare scope Production: `APP_ENV=production`, `STRIPE_MODE=live`, `ALLOW_LIVE_PAYMENTS=true`, chiave `sk_live_`, signing secret del webhook LIVE del dominio esatto; non promuovere la configurazione Preview.
+- [ ] `ENABLE_AUTOMATIC_JOBS=true` necessario per i rimborsi promessi dalle condizioni. Verificare nell’hosting i due cron `daily` e `cleanup`, autenticazione Bearer, timeout, limiti del piano e notifiche degli errori. Daily è pianificato alle 07:00 UTC; cleanup alle 07:30 UTC.
+- [ ] Configurare e verificare Turnstile, Upstash e Resend produzione. Non riutilizzare segreti staging. L’allowlist email limita solo ambienti non-production.
+- [ ] Eseguire `npm run production:check -- --env-file .env.production.local`: deve riportare FORMATO OK. Non è prova di rete, di titolarità account o di attivazione Stripe.
+- [ ] Applicare solo migrazioni `migrate deploy` al DB produzione esplicitamente confermato, poi `migrate status`. Non usare reset/db push/seed sul DB commerciale.
+- [ ] Preparare una build Production con il dominio e le variabili definitive, verificarla prima di assegnare il dominio pubblico; mantenere la precedente versione per rollback compatibile con le migrazioni additive.
+- [ ] Controllare HTTPS/cookie/CDN e completare una verifica autorizzata LIVE coerente con il piano commerciale; monitorare webhook/email/cron e riconciliare qualsiasi esito ambiguo.
+- [ ] Registrare data, commit, URL, responsabile ed evidenza dei controlli online. Solo allora dichiarare produzione operativa.
 
-- [ ] Verificare PostgreSQL nuovo e separato da sviluppo/produzione. STAGING_DATABASE_CONFIRMED è un'attestazione manuale, non prova automatica dell'isolamento.
-- [ ] Configurare TLS, pool runtime, connessione diretta migrazioni, privilegi minimi, backup e prova ripristino; nessun accesso anonimo.
-- [ ] Preparare APP_ENV=staging, origine HTTPS definitiva e STAGING_DATABASE_CONFIRMED=true dopo la verifica.
-- [ ] Eseguire `npm.cmd run staging:check -- --env-file <file-locale-ignorato>` sull'esatta configurazione staging: zero problemi richiesti, senza considerarlo un test provider.
-- [ ] Applicare le tre migrazioni al solo DB staging confermato, inclusa `20261016000200_security_sessions`, prima di avviare il nuovo codice.
-- [ ] Verificare nuovo login, sessioni revocate, blocco con DB indisponibile e pool per i controlli sessione.
-- [ ] Mantenere TRYON_REVIEWED=false e ENABLE_AUTOMATIC_JOBS=false per la demo.
-
-## Servizi TEST
-
-- [ ] Verificare account e chiavi Stripe solo TEST; il codice rifiuta chiavi/eventi live anche con vecchi flag opt-in.
-- [ ] Configurare webhook TEST sull'URL esatto; verificare firma, retry, duplicati, fuori ordine e che la protezione hosting non blocchi gli eventi firmati.
-- [ ] Con autorizzazione ai test esterni, provare Checkout TEST → webhook → PAID → admin, quindi rimborso TEST e riconciliazione. Solo identità sintetiche e indirizzi consentiti.
-- [ ] Provare pagamento incompleto, importo/quantità alterati, presale chiusa e due completamenti simultanei nello staging reale.
-- [ ] Configurare Turnstile per il dominio esatto; verificare token valido/scaduto, hostname e comportamento senza JavaScript.
-- [ ] Configurare Upstash; verificare fail-closed e limiti su più istanze. Verificare header IP Vercel senza fidarsi di header client.
-- [ ] Configurare Resend, mittente verificato e allowlist esatta; provare conferma/rimborso senza duplicazione e riconciliazione degli invii ambigui.
-
-## Hosting, UI e gestione
-
-- [ ] Ottenere autorizzazione specifica prima di pubblicare; questo audit si ferma alla preparazione.
-- [ ] Verificare gate su home/presale/API, admin separato, noindex, cookie Secure, HTTPS, CSP, cache CDN e redirect sul dominio reale.
-- [ ] Provare in browser desktop/mobile: gate, login/CAPTCHA, navigazione, animazioni, Checkout, ritorno, conferma, admin, export e logout. Controllare risorse bloccate dalla CSP.
-- [ ] Provare API admin senza cookie e con sessione revocata anche dietro la protezione hosting.
-- [ ] Verificare cron con segreto corretto/errato e dry-run. `vercel.json` pianifica soltanto daily; cleanup sessioni/rate limit non pianificato. Definire pulizia periodica autorizzata senza attivare effetti finanziari automatici.
-- [ ] Definire retention/accessi per ordini, outbox, webhook, audit, errori, sessioni e backup. Verificare minimizzazione log Vercel/provider.
-- [ ] Fare rivedere informative, consenso, conservazione, ruoli fornitori e richieste degli interessati da un referente competente; nessuna conformità GDPR certificata.
-- [ ] Ripetere audit dipendenze e test se cambia codice/configurazione; registrare versione, data, evidenze e responsabile dei controlli esterni.
-
-Il try-on resta disabilitato. Riattivarlo richiede verifica separata di bucket privato, URL firmati, SSRF/provider, quote, pixel, cancellazione, scheduler e informativa.
-
-**Verdetto corrente: SECURITY NOT READY FOR STAGING.**
+Non è necessario rendere pubblico il repository per risolvere i permessi Vercel. La modifica della visibilità non fa parte di questo rilascio.
