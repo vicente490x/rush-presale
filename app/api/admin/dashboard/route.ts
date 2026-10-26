@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 import { ClothingSize } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { paidWhere, settings } from '@/lib/settings';
+import { paidWhere, settings, activeOrderWhere } from '@/lib/settings';
 import { adminRoute } from '@/lib/http';
 import { expiryPreview } from '@/lib/expiry';
 export const dynamic = 'force-dynamic';
 export const GET = adminRoute(async () => {
   const current = await settings();
   const [pieces, ordersCount, paidOrders, money, sizes, pendingRefunds, failedRefunds, toDeliver, recent, preview] = await Promise.all([
-    prisma.order.aggregate({ where: paidWhere, _sum: { quantity: true } }), prisma.order.count(),
-    prisma.order.count({ where: { paymentStatus: 'PAID' } }),
-    prisma.order.aggregate({ where: { paymentStatus: 'PAID' }, _sum: { amountCents: true, refundedAmountCents: true } }),
+    prisma.order.aggregate({ where: paidWhere, _sum: { quantity: true } }), prisma.order.count({ where: activeOrderWhere }),
+    prisma.order.count({ where: { ...activeOrderWhere, paymentStatus: 'PAID' } }),
+    prisma.order.aggregate({ where: { ...activeOrderWhere, paymentStatus: 'PAID' }, _sum: { amountCents: true, refundedAmountCents: true } }),
     prisma.order.groupBy({ by: ['size'], where: paidWhere, _sum: { quantity: true } }),
-    prisma.order.count({ where: { refundStatus: 'PENDING' } }), prisma.order.count({ where: { refundStatus: 'FAILED' } }),
+    prisma.order.count({ where: { ...activeOrderWhere, refundStatus: 'PENDING' } }), prisma.order.count({ where: { ...activeOrderWhere, refundStatus: 'FAILED' } }),
     prisma.order.count({ where: { ...paidWhere, deliveryStatus: { not: 'CONSEGNATA' } } }),
     prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 10 }), expiryPreview()
   ]);

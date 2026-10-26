@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { ImageGallery } from '@/components/ImageGallery';
 import { ScrollReveal } from '@/components/ScrollReveal';
-import { TryOn } from '@/components/TryOn';
 import { Turnstile } from '@/components/Turnstile';
 
 type SaleStatus = {
@@ -17,7 +16,6 @@ type SaleStatus = {
   priceCents: number;
   maxQty: number;
   sizes: string[];
-  tryOn: boolean;
   termsText: string;
   termsVersionId: string;
   termsVersion: number;
@@ -134,7 +132,7 @@ export function Storefront() {
               </div>
               <p className="counter-message">
                 {!sale ? 'Caricamento dello stato PRE-SALE…' : sale.thresholdReached
-                  ? '✓ SOGLIA RAGGIUNTA — la produzione può partire. La PRE-SALE resta aperta.'
+                  ? (sale.open ? '✓ SOGLIA RAGGIUNTA — la produzione può partire. La PRE-SALE resta aperta.' : '✓ SOGLIA RAGGIUNTA — PRE-SALE chiusa.')
                   : `${sale?.missing ?? threshold} ${sale?.missing === 1 ? 'pezzo mancante' : 'pezzi mancanti'} alla soglia minima di produzione.`}
               </p>
             </section>
@@ -203,7 +201,6 @@ export function Storefront() {
           ))}
         </section>
 
-        {sale?.tryOn && <TryOn selectedSize={size} />}
       </main>
     </>
   );

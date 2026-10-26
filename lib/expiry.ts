@@ -6,9 +6,10 @@ import { requestRefund } from '@/lib/refunds';
 import { queueNotice, orderValues, recipients } from '@/lib/notifications';
 import { deliverPendingEmails } from '@/lib/mail';
 import { reconcileCheckouts } from '@/lib/presale';
+// Preview is read-only; only runExpiry can persist warning/refund actions.
 export async function expiryPreview(now = new Date()) {
   const current = await settings();
-  const orders = await prisma.order.findMany({ where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' }, expiresAt: { not: null } }, orderBy: { expiresAt: 'asc' }, take: 1000 });
+  const orders = await prisma.order.findMany({ where: { excludedBatchId: null, paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' }, expiresAt: { not: null } }, orderBy: { expiresAt: 'asc' }, take: 1000 });
   const productionStarted = Boolean(current.productionStartedAt) || hasProductionStarted(current.productionStatus);
   return { productionStarted, truncated: orders.length === 1000,
     due: productionStarted ? [] : orders.filter(o => o.expiresAt! <= now),
@@ -16,6 +17,7 @@ export async function expiryPreview(now = new Date()) {
     pending: await prisma.refundOperation.findMany({ where: { status: { in: ['PENDING', 'FAILED'] } }, include: { order: true }, take: 100, orderBy: { updatedAt: 'asc' } })
   };
 }
+// Bounded work keeps the scheduled invocation inside the hosting time budget.
 export async function runExpiry(actor: string, stripe?: Stripe) {
   const deadline = Date.now() + 120000;
   const preview = await expiryPreview();

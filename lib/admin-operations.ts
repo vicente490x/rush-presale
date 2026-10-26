@@ -40,7 +40,7 @@ export async function changeProduction(status: ProductionStatus, actor: string) 
     if (current.productionStatus === status) return current;
     if (status === 'PRODUZIONE_AVVIATA') {
       if (current.productionStartedAt || !['IN_RACCOLTA', 'SOGLIA_RAGGIUNTA'].includes(current.productionStatus)) throw new DomainError('Transizione produzione non valida.');
-      const pieces = await tx.order.aggregate({ where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' } }, _sum: { quantity: true } });
+      const pieces = await tx.order.aggregate({ where: { excludedBatchId: null, paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' } }, _sum: { quantity: true } });
       if ((pieces._sum.quantity ?? 0) < current.threshold) throw new DomainError('La soglia minima non è stata raggiunta.');
       if (await tx.refundOperation.count({ where: { automatic: true, status: 'PENDING' } })) throw new DomainError('Riconcilia prima i rimborsi automatici in corso.');
     } else if (status !== 'PRODUZIONE_COMPLETATA' || !current.productionStartedAt || current.productionStatus !== 'PRODUZIONE_AVVIATA') throw new DomainError('La produzione può soltanto avanzare da avviata a completata.');

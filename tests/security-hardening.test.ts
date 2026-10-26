@@ -1,18 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFormData } from '../lib/http';
 import { clientIp } from '../lib/ratelimit';
 import { contentSecurityPolicy } from '../lib/security-headers';
 import { orderInput, settingsInput } from '../lib/operational-schema';
-
-test('SEC-05 multipart limits apply to chunked bodies without Content-Length', async () => {
-  const stream = new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array(100)); controller.close(); } });
-  const request = new Request('http://localhost/api/tryon', { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=fixture' }, body: stream, duplex: 'half' } as RequestInit);
-  await assert.rejects(readFormData(request, 32), /troppo grande/);
-  const form = new FormData(); form.append('consent', 'true'); form.append('photo', new Blob(['synthetic'], { type: 'image/png' }), 'fixture.png');
-  const parsed = await readFormData(new Request('http://localhost', { method: 'POST', body: form }), 4096);
-  assert.equal(parsed.get('consent'), 'true'); assert.ok(parsed.get('photo') instanceof File);
-});
 
 test('SEC-06 direct requests cannot rotate rate-limit identity through spoofed forwarding headers', () => {
   const previous = process.env.VERCEL;

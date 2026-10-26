@@ -89,7 +89,7 @@ model Order {
   checkoutFingerprint   String?
   checkoutExpiresAt     DateTime?
   refundedAmountCents   Int              @default(0)
-  demoSeedId            String?
+  excludedBatchId       String?          @map("demoSeedId")
   refundOperation       RefundOperation?
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
@@ -122,11 +122,11 @@ model Settings {
   presaleOpen           Boolean          @default(true)
   productionStatus      ProductionStatus @default(IN_RACCOLTA)
   thresholdNotifiedAt   DateTime?
-  tryOnEnabled          Boolean          @default(false)
-  tryOnDailyLimit       Int              @default(50)
-  tryOnDailyCount       Int              @default(0)
-  tryOnDailySpendUsd    Decimal          @default(0) @db.Decimal(10, 4)
-  tryOnSpendResetAt     DateTime         @default(now())
+  tryOnEnabled          Boolean          @default(false) @ignore
+  tryOnDailyLimit       Int              @default(50) @ignore
+  tryOnDailyCount       Int              @default(0) @ignore
+  tryOnDailySpendUsd    Decimal          @default(0) @db.Decimal(10, 4) @ignore
+  tryOnSpendResetAt     DateTime         @default(now()) @ignore
   updatedAt             DateTime         @updatedAt
 }
 
@@ -139,6 +139,7 @@ model TryOnJob {
   costEstimate Decimal     @default(0) @db.Decimal(10, 4)
 
   @@index([createdAt, status])
+  @@ignore
 }
 
 model StripeWebhookEvent {
@@ -171,6 +172,7 @@ model TemporaryTryOnAsset {
   createdAt DateTime @default(now())
 
   @@index([expiresAt])
+  @@ignore
 }
 
 model EmailOutbox {

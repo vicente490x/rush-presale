@@ -17,7 +17,9 @@ export async function settings() {
 export function hasProductionStarted(status: ProductionStatus) {
   return status === 'PRODUZIONE_AVVIATA' || status === 'PRODUZIONE_COMPLETATA';
 }
-export const paidWhere = { paymentStatus: 'PAID' as const, refundStatus: { not: 'REFUNDED' as const } };
+// Keep excluded historical imports outside commercial totals and stock.
+export const activeOrderWhere = { excludedBatchId: null };
+export const paidWhere = { ...activeOrderWhere, paymentStatus: 'PAID' as const, refundStatus: { not: 'REFUNDED' as const } };
 export async function paidPieces() {
   const result = await prisma.order.aggregate({ where: paidWhere, _sum: { quantity: true } });
   return result._sum.quantity ?? 0;

@@ -31,7 +31,7 @@ export async function reserveOrder(input: z.infer<typeof orderInput>) {
     const size = sizesSchema.parse(current.sizes).find(row => row.size === input.size);
     if (!size?.enabled) throw new DomainError('Taglia non disponibile.', 400);
     // PENDING reservations are retained until Stripe has definitively expired them.
-    const reserved = { demoSeedId: null, OR: [{ paymentStatus: 'PAID' as const, refundStatus: { not: 'REFUNDED' as const } }, { paymentStatus: 'PENDING' as const }] };
+    const reserved = { excludedBatchId: null, OR: [{ paymentStatus: 'PAID' as const, refundStatus: { not: 'REFUNDED' as const } }, { paymentStatus: 'PENDING' as const }] };
     if (size.stock !== null) {
       const used = await tx.order.aggregate({ where: { ...reserved, size: input.size }, _sum: { quantity: true } });
       if ((used._sum.quantity ?? 0) + input.quantity > size.stock) throw new DomainError('Disponibilità della taglia esaurita.');

@@ -157,9 +157,6 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     await assert.rejects(reserveOrder(await input({ quantity: 6 })), /massima/);
     await saveSettings(await config({ maxPerCustomer: 5 }), 'test-admin'); await reserveOrder(await input({ quantity: 5 })); await assert.rejects(reserveOrder(await input()), /cliente/);
   });
-  await t.test('23 AI endpoint disabled without processing image', async () => {
-    const { POST } = await import('../app/api/tryon/route'); assert.equal((await POST(new Request('http://localhost/api/tryon', { method: 'POST' }))).status, 503);
-  });
   await reset();
   await t.test('24 email lease concurrent workers sends once', async () => {
     await paid(); let sends = 0; const sender = async () => { sends++; return 'provider-test'; };
@@ -223,7 +220,7 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   await t.test('each admin handler independently rejects an unsigned request', async () => {
     for (const [path, method] of [
       ['dashboard', 'GET'], ['diagnostics', 'GET'], ['diagnostics', 'POST'], ['expiry', 'GET'], ['expiry', 'POST'], ['export', 'GET'], ['orders', 'GET'], ['settings', 'GET'], ['settings', 'POST'],
-      ['presale', 'POST'], ['production', 'POST'], ['settings/tryon', 'POST'], ['orders/[id]/delivery', 'POST'], ['orders/[id]/refund', 'POST'], ['logout', 'POST']
+      ['presale', 'POST'], ['production', 'POST'], ['orders/[id]/delivery', 'POST'], ['orders/[id]/refund', 'POST'], ['logout', 'POST']
     ]) {
       const module = await import('../app/api/admin/' + path + '/route');
       const response = await module[method](new Request('http://localhost/api/admin/' + path, { method }), { params: Promise.resolve({ id: 'not-an-order' }) });
@@ -346,6 +343,44 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     } finally {
       for (const key of Object.keys(fixture)) { if (original[key] === undefined) delete process.env[key]; else process.env[key] = original[key]; }
     }
+  });
+  await reset();
+  await t.test('SPEC-08 expired order is refunded by the scheduled workflow and both parties are notified once', async () => {
+    const { order } = await paid();
+    await prisma.order.update({ where: { id: order.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    refundMode = 'succeeded';
+    const result = await runExpiry('cron:acceptance', stripe);
+    assert.equal(result.confirmedRefunds, 1); assert.equal(calls, 1);
+    const updated = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    assert.equal(updated.refundStatus, 'REFUNDED'); assert.equal(updated.orderStatus, 'REFUNDED');
+    assert.equal(updated.refundedAmountCents, order.amountCents); assert.equal(await paidPieces(), 0);
+    const notices = await prisma.emailOutbox.findMany({ where: { dedupeKey: { startsWith: 'refund:' + order.id } } });
+    assert.deepEqual(notices.map(n => n.to).sort(), ['admin@example.com', 'buyer@example.com']);
+    await runExpiry('cron:acceptance', stripe); assert.equal(calls, 1);
+    assert.equal(await prisma.emailOutbox.count({ where: { dedupeKey: { startsWith: 'refund:' + order.id } } }), 2);
+  });
+  await reset();
+  await t.test('SPEC-08 an order cannot be refunded automatically before its individual deadline', async () => {
+    const { order } = await paid();
+    await assert.rejects(requestRefund(order.id, true, 'cron:acceptance', stripe), /non idoneo/);
+    assert.equal(calls, 0); assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).refundStatus, 'NONE');
+  });
+  await reset();
+  await t.test('SPEC-05 closing cancels open checkout and preserves the order record', async () => {
+    const data = await input(); await createCheckout(data, stripe);
+    const { setPresaleOpen } = await import('../lib/presale');
+    const result = await setPresaleOpen(false, 'test-admin', stripe);
+    assert.equal(result.errors, 0); assert.equal((await settings()).presaleOpen, false);
+    assert.equal(await prisma.order.count(), 1); assert.equal((await prisma.order.findFirstOrThrow()).paymentStatus, 'FAILED');
+    await assert.rejects(reserveOrder(await input()), /CHIUSA/);
+  });
+  await reset();
+  await t.test('excluded historical batches are absent from paid counters and administrative lists', async () => {
+    const { order } = await paid(); await prisma.order.update({ where: { id: order.id }, data: { excludedBatchId: 'historical-batch' } });
+    assert.equal(await paidPieces(), 0);
+    const { orderQuery } = await import('../lib/order-query');
+    assert.equal(await prisma.order.count({ where: orderQuery(new Request('http://localhost/api/admin/orders')).where }), 0);
+    assert.equal(await prisma.order.count(), 1);
   });
   await reset();
   await t.test('real bcrypt admin login rejects wrong credentials and persists revocable session', async () => {

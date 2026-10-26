@@ -9,7 +9,7 @@ export function productionFixture(): Environment {
     PRODUCTION_DATABASE_CONFIRMED: 'true', PRODUCTION_LAUNCH_CONFIRMED: 'true', LEGAL_REVIEW_CONFIRMED: 'true',
     STRIPE_MODE: 'live', STRIPE_SECRET_KEY: 'sk_live_' + 'A'.repeat(32), STRIPE_WEBHOOK_SECRET: 'whsec_' + 'B'.repeat(32),
     ALLOW_LIVE_PAYMENTS: 'true', ADMIN_PASSWORD_HASH: '$2b$12$' + 'a'.repeat(53), SESSION_SECRET: 'c'.repeat(40), CRON_SECRET: 'e'.repeat(40),
-    ENABLE_AUTOMATIC_JOBS: 'true', TRYON_REVIEWED: 'false', RESEND_API_KEY: 're_' + 'f'.repeat(32),
+    ENABLE_AUTOMATIC_JOBS: 'true', RESEND_API_KEY: 're_' + 'f'.repeat(32),
     MAIL_FROM: 'RUSH <orders@rush.test-provider.net>', ADMIN_EMAIL: 'admin@rush.test-provider.net',
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'fixture-site', TURNSTILE_SECRET_KEY: 'fixture-secret',
     UPSTASH_REDIS_REST_TOKEN: 'fixture-token', UPSTASH_REDIS_REST_URL: 'https://rush.test-provider.net',

@@ -13,7 +13,7 @@ export async function GET() {
       production: current.productionStatus, priceCents: current.unitPriceCents, maxQty: current.maxQuantity,
       sizes: sizesSchema.parse(current.sizes).filter(row => row.enabled).map(row => row.size),
       termsText: terms.text, termsVersionId: terms.id, termsVersion: terms.version, settingsRevision: current.revision,
-      deliveryText: current.deliveryText, refundMonths: current.refundMonths, tryOn: false
+      deliveryText: current.deliveryText, refundMonths: current.refundMonths
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch { return NextResponse.json({ error: 'Stato PRE-SALE non disponibile.' }, { status: 503 }); }
 }

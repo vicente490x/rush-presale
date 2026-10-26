@@ -10,7 +10,7 @@ const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: url.toString(), D
   SESSION_SECRET: 'integration-session-secret-at-least-32-characters',
   STRIPE_SECRET_KEY: 'sk_test_integration_placeholder', STRIPE_WEBHOOK_SECRET: 'integration-signature-secret',
   EMAIL_ALLOWLIST: 'buyer@example.com,admin@example.com', ADMIN_EMAIL: 'admin@example.com',
-  RESEND_API_KEY: '', FAL_KEY: '', ENABLE_AUTOMATIC_JOBS: 'false' };
+  RESEND_API_KEY: '', ENABLE_AUTOMATIC_JOBS: 'false' };
 for (const args of [['node_modules/prisma/build/index.js', 'migrate', 'deploy'], ['--import', 'tsx', '--test', 'tests/integration.test.ts']]) {
   const result = spawnSync(process.execPath, args, { env, stdio: 'inherit' });
   if (result.status !== 0) process.exit(result.status ?? 1);

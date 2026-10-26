@@ -23,7 +23,7 @@ test('production preflight requires every launch, provider and seller prerequisi
     assert.ok(productionProblems(missing).length, key);
   }
   for (const [key, value] of Object.entries({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: 'sk_test_secret-not-for-logs',
-    ALLOW_LIVE_PAYMENTS: 'false', ENABLE_AUTOMATIC_JOBS: 'false', TRYON_REVIEWED: 'true', SELLER_NAME: '[SELLER]',
+    ALLOW_LIVE_PAYMENTS: 'false', ENABLE_AUTOMATIC_JOBS: 'false', SELLER_NAME: '[SELLER]',
     NEXT_PUBLIC_SITE_URL: 'https://rush.test-provider.net/path', ADMIN_PASSWORD_HASH: '$2b$10$' + 'a'.repeat(53) })) {
     const errors = productionProblems({ ...input, [key]: value });
     assert.ok(errors.length, key); assert.ok(!errors.join().includes(value), key);

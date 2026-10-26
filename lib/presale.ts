@@ -15,8 +15,8 @@ export async function setPresaleOpen(open: boolean, actor: string, stripe?: Stri
 }
 export async function reconcileCheckouts(expireAll: boolean, stripe: Stripe = stripeClient(), budgetMs = 120000) {
   const started = Date.now();
-  const total = await prisma.order.count({ where: { paymentStatus: 'PENDING', demoSeedId: null } });
-  const pending = await prisma.order.findMany({ where: { paymentStatus: 'PENDING', demoSeedId: null }, orderBy: { createdAt: 'asc' }, take: 50 });
+  const total = await prisma.order.count({ where: { paymentStatus: 'PENDING', excludedBatchId: null } });
+  const pending = await prisma.order.findMany({ where: { paymentStatus: 'PENDING', excludedBatchId: null }, orderBy: { createdAt: 'asc' }, take: 50 });
   const result = { checked: 0, errors: 0, more: 0 }; let visited = 0;
   for (const order of pending) {
     if (Date.now() - started >= budgetMs) break;

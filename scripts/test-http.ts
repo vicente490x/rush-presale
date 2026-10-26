@@ -22,9 +22,9 @@ async function main() {
     ADMIN_PASSWORD_HASH: await bcrypt.hash(randomBytes(24).toString('hex'), 12),
     ADMIN_ID: 'http-test-admin', ADMIN_EMAIL: 'admin@example.com', STRIPE_SECRET_KEY: 'sk_test_http_fixture',
     STRIPE_WEBHOOK_SECRET: randomBytes(32).toString('hex'), CRON_SECRET: randomBytes(32).toString('hex'),
-    RESEND_API_KEY: '', MAIL_FROM: '', EMAIL_ALLOWLIST: 'buyer@example.com,admin@example.com', FAL_KEY: '',
+    RESEND_API_KEY: '', MAIL_FROM: '', EMAIL_ALLOWLIST: 'buyer@example.com,admin@example.com',
     UPSTASH_REDIS_REST_URL: '', UPSTASH_REDIS_REST_TOKEN: '', TURNSTILE_SECRET_KEY: '',
-    SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '', ENABLE_AUTOMATIC_JOBS: 'false' };
+    ENABLE_AUTOMATIC_JOBS: 'false' };
   const migration = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], { env, stdio: 'inherit' });
   if (migration.status !== 0) throw new Error('Migrazione test fallita.');
   Object.assign(process.env, env);
@@ -74,6 +74,8 @@ async function main() {
       }
     });
     check('public home branding, noindex and banner without a password', () => { assert.equal(home.status, 200); assert.ok(html.includes('PRE-SALE')); assert.ok(html.includes('PAGAMENTI DI TEST')); assert.ok(home.headers.get('x-robots-tag')?.includes('noindex')); assert.ok(home.headers.get('content-security-policy')?.includes("frame-ancestors 'none'")); });
+    check('SPEC-02 home logo is visible before JavaScript hydration', () => assert.doesNotMatch(html, /class="hero-content"[^>]*opacity:0/));
+    for (const path of ['/api/tryon', '/api/admin/settings/tryon']) assert.equal((await get(path)).status, path.startsWith('/api/admin') ? 401 : 404);
     const presale = await get('/presale', gate); check('presale SSR responds', () => assert.equal(presale.status, 200));
     check('SEC-04 fresh CSP nonce matches every inline script and responses cannot be cached', () => {
       const csp = home.headers.get('content-security-policy') ?? '';
@@ -89,7 +91,7 @@ async function main() {
     });
     for (const path of ['/privacy', '/cookie', '/termini', '/rimborsi']) assert.equal((await get(path, gate)).status, 200, path);
     const logo = await get('/_next/image?url=%2Fassets%2Flogo.png&w=640&q=75', gate); check('Next image optimizer serves brand asset without a gate', () => { assert.equal(logo.status, 200); assert.ok(logo.headers.get('content-type')?.startsWith('image/')); });
-    for (const url of ['/api/admin/orders', 'https://untrusted.supabase.co/storage/v1/object/sign/test.png']) {
+    for (const url of ['/api/admin/orders', 'https://untrusted.invalid/image.png']) {
       assert.equal((await get('/_next/image?url=' + encodeURIComponent(url) + '&w=640&q=75')).status, 400);
     }
     check('SEC-07 optimizer rejects internal API and remote storage URLs', () => {});

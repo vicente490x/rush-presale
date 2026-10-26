@@ -11,7 +11,7 @@ function fixture() {
     STRIPE_WEBHOOK_SECRET: 'whsec_' + 'B'.repeat(32), ALLOW_LIVE_PAYMENTS: 'false',
     ADMIN_PASSWORD_HASH: '$2b$12$' + 'a'.repeat(53), STAGING_PASSWORD_HASH: '$2b$12$' + 'b'.repeat(53),
     SESSION_SECRET: 'c'.repeat(40), STAGING_SESSION_SECRET: 'd'.repeat(40), CRON_SECRET: 'e'.repeat(40),
-    ENABLE_AUTOMATIC_JOBS: 'false', TRYON_REVIEWED: 'false', RESEND_API_KEY: 're_' + 'f'.repeat(32),
+    ENABLE_AUTOMATIC_JOBS: 'false', RESEND_API_KEY: 're_' + 'f'.repeat(32),
     MAIL_FROM: 'RUSH <orders@rush.test-provider.net>', EMAIL_ALLOWLIST: 'qa@rush.test-provider.net',
     ADMIN_EMAIL: 'qa@rush.test-provider.net', NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'fixture-site',
     TURNSTILE_SECRET_KEY: 'fixture-secret', UPSTASH_REDIS_REST_TOKEN: 'fixture-token',

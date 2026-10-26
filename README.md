@@ -1,45 +1,40 @@
 # RUSH PRE-SALE
 
-Sito Next.js per la pre-sale delle magliette RUSH, con PostgreSQL/Prisma, Checkout Stripe ospitato, email Resend, Turnstile e rate limit Upstash. Il sito pubblico non richiede una password; `/admin` rimane autenticato. La prova virtuale AI è disabilitata.
+Sito dedicato alla prevendita delle magliette RUSH: prezzo iniziale **25 EUR**, soglia iniziale **15 pezzi**, taglie **XS–XXL**, pagamento Stripe e backoffice. La soglia abilita l’avvio della produzione e non chiude la raccolta. Se la produzione non parte, ogni ordine conserva la propria scadenza di **due mesi di calendario**.
 
-Staging usa pagamenti TEST e email autorizzate. Produzione può usare LIVE soltanto con ambiente, chiavi, database, provider e conferme di lancio coerenti. Nessun segreto operativo è incluso nel repository.
+## Documentazione
 
-## Documentazione corrente
+La documentazione completa è nel [dossier di progetto](docs/README.md). La fonte funzionale è [SPEC.md](SPEC.md).
 
-- [Requisiti di sicurezza](SECURITY_REQUIREMENTS.md)
-- [Checklist di pubblicazione](SECURITY_DEPLOY_CHECKLIST.md)
-- [Test eseguiti e limiti](SECURITY_TEST_RESULTS.md)
-- [Rischi aperti](SECURITY_REMAINING_RISKS.md)
-- [Deploy Vercel](DEPLOY_VERCEL.md) · [Configurazione Stripe](STRIPE_SETUP.md)
+- [Requisiti e tracciabilità](docs/02_REQUISITI_TRACCIABILITA.md)
+- [Architettura](docs/03_ARCHITETTURA.md) e [dati/API](docs/04_DATI_API.md)
+- [Guida al codice](docs/05_GUIDA_CODICE.md)
+- [Manuale operativo](docs/06_MANUALE_OPERATIVO.md)
+- [Sicurezza](docs/07_SICUREZZA.md) e [collaudo](docs/08_COLLAUDO.md)
+- [Gestione tecnica](docs/09_GESTIONE_TECNICA.md) e [rilascio](docs/10_PIANO_RILASCIO.md)
+- [Changelog](CHANGELOG.md)
 
-## Sviluppo e verifica
+## Sviluppo
 
-Node 24 e PostgreSQL. Per sviluppo, compilare un file ambiente locale ignorato da Git partendo da `.env.example`; non usare credenziali o ordini commerciali. Installare con `npm ci` e generare il client Prisma con `npm run db:generate` se necessario. Configurare DB e origine prima di avviare `npm run dev`.
+Node 24, PostgreSQL e configurazione locale ignorata da Git, preparata da `.env.example`. Configurare i provider richiesti prima di usare il checkout.
 
 ```sh
-npm run lint
-npm run typecheck
-npm test
-npm run build
+npm ci
+npm run db:generate
+npm run dev
 ```
 
-`npm run verify` esegue i quattro controlli in sequenza con l’ambiente configurato. L’integrazione usa esclusivamente un database locale temporaneo denominato `rush_audit*`, indicato da `RUSH_TEST_DATABASE_URL`:
+## Verifica
 
 ```sh
+npm run verify
 npm run test:integration
 npm run test:migration
 npm run test:http
 ```
 
-Il test HTTP richiede prima una build staging compilata con l’origine indicata in `SECURITY_TEST_RESULTS.md`. Ogni runner crea uno schema casuale, conservato per ispezione nel DB temporaneo. Il workflow GitHub crea il proprio PostgreSQL isolato e non riceve segreti provider.
+I test DB richiedono `RUSH_TEST_DATABASE_URL` su un database PostgreSQL temporaneo locale denominato `rush_audit*`; non usare il database del servizio. Per build/HTTP e preflight seguire il [piano di collaudo](docs/08_COLLAUDO.md) e il [runbook](docs/09_GESTIONE_TECNICA.md).
 
-## Preparazione del rilascio
+## Rilascio
 
-Usare i modelli `.env.staging.example` / `.env.production.example` senza committare i file reali. I controlli seguenti leggono soltanto il file esplicito e non contattano provider:
-
-```sh
-npm run staging:check -- --env-file .env.staging.local
-npm run production:check -- --env-file .env.production.local
-```
-
-Zero errori significa formato coerente; non certifica account, credenziali, dominio o stato del database. Applicare le migrazioni alla destinazione confermata prima del deploy, secondo la checklist. Il consenso e la configurazione effettiva di Stripe LIVE non sono sostituiti dai test con fixture.
+I modelli staging e produzione contengono solo nomi e valori di sicurezza predefiniti. Non committare credenziali o file ambiente reali. Il dominio pubblico è https://rush-presale.vercel.app/ ; il banner TEST identifica un servizio ancora in collaudo. Main contiene la baseline di consegna dopo i controlli, mentre le vendite LIVE richiedono il completamento del piano di rilascio.

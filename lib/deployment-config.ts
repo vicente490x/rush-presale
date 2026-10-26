@@ -51,7 +51,6 @@ export function deploymentProblems(env: Environment, target: 'staging' | 'produc
   for (const key of keys) require(configured(env[key]) && (env[key]?.length ?? 0) >= 32, `${key}: generare almeno 32 caratteri casuali.`);
   require(keys.every(key => !!env[key]) && new Set(keys.map(key => env[key])).size === keys.length, 'Segreti sessione/cron: devono essere distinti.');
   require(env.ENABLE_AUTOMATIC_JOBS === (production ? 'true' : 'false'), `ENABLE_AUTOMATIC_JOBS: impostare ${production ? 'true per rispettare i rimborsi previsti dalle condizioni' : 'false'}.`);
-  require(env.TRYON_REVIEWED === 'false', 'TRYON_REVIEWED: impostare false per questa demo.');
   require(configured(env.RESEND_API_KEY) && /^re_[A-Za-z0-9_-]{16,}$/.test(env.RESEND_API_KEY ?? ''), 'RESEND_API_KEY: configurare il provider reale.');
   const from = (env.MAIL_FROM ?? '').match(/<([^<>]+)>$/)?.[1] ?? env.MAIL_FROM ?? '';
   require(email.safeParse(from).success && configured(from), 'MAIL_FROM: impostare un mittente verificato in Resend.');

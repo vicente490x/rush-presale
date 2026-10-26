@@ -19,7 +19,7 @@ export function orderValues(order: Order, _current: Settings) {
 export function recipients(current: Settings) { return Array.isArray(current.adminRecipients) ? current.adminRecipients.filter((v): v is string => typeof v === 'string') : []; }
 // Caller holds the global settings lock: no threshold/production race.
 export async function checkThreshold(tx: Prisma.TransactionClient, current: Settings) {
-  const aggregate = await tx.order.aggregate({ where: { paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' } }, _sum: { quantity: true } });
+  const aggregate = await tx.order.aggregate({ where: { excludedBatchId: null, paymentStatus: 'PAID', refundStatus: { not: 'REFUNDED' } }, _sum: { quantity: true } });
   const total = aggregate._sum.quantity ?? 0;
   const productionLocked = current.productionStartedAt || ['PRODUZIONE_AVVIATA', 'PRODUZIONE_COMPLETATA'].includes(current.productionStatus);
   if (total < current.threshold) {

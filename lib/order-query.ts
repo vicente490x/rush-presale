@@ -11,7 +11,7 @@ export function orderQuery(request: Request) {
   const url = new URL(request.url);
   const raw = Object.fromEntries([...url.searchParams.entries()].filter(([key, value]) => key !== 'format' && value !== ''));
   const query = querySchema.parse(raw);
-  const where: Prisma.OrderWhereInput = {
+  const where: Prisma.OrderWhereInput = { excludedBatchId: null,
     ...(query.payment ? { paymentStatus: query.payment } : {}), ...(query.refund ? { refundStatus: query.refund } : {}),
     ...(query.size ? { size: query.size } : {}), ...(query.delivery ? { deliveryStatus: query.delivery } : {}),
     ...(query.q ? { OR: ['orderNumber', 'firstName', 'lastName', 'email'].map(key => ({ [key]: { contains: query.q, mode: 'insensitive' } })) } : {})
