@@ -1,6 +1,6 @@
 # REL-01 — Piano di rilascio e registro rischi
 
-**Release 2.1.0 · 26 ottobre 2026**
+**Release 2.1.1 · 26 ottobre 2026**
 
 ## Sequenza e gate
 
@@ -37,6 +37,19 @@ La pubblicazione del codice su main non attiva automaticamente vendite LIVE. Il 
 - [ ] Responsabile servizio, assistenza e gestione incidenti assegnati.
 - [ ] Build Production finale verificata prima dell’assegnazione del dominio; rollback pronto.
 - [ ] Approvazione del titolare e conferma lancio registrate.
+
+## Avanzamento operativo 2.1.1
+
+| Attività | Evidenza | Stato |
+|---|---|---|
+| Webhook Stripe TEST | Account Sandbox di eccomerce confermato dal titolare; endpoint canonico abilitato con gli otto eventi gestiti | Verificato nel provider |
+| Pagamento TEST completo | Nessuna sessione Checkout presente nell’account alla verifica iniziale | Aperto |
+| Recupero anti-bot | Feedback dopo attesa, errori/scadenze, browser non supportati e nuovo tentativo; validazione server mantenuta | Implementato, collaudo release richiesto |
+| Backup/ripristino procedura | pg_dump custom e pg_restore transazionale su database locali separati; dati/relazioni/checksum conservati | PASS locale; backup commerciale aperto |
+| Configurazione e connettività | Comando release:audit con verifiche effettive in sola lettura, senza segreti nei report | Predisposto |
+| Dati e approvazione venditore | Non ancora forniti per questa release | Aperto, impedisce LIVE |
+
+I riscontri definitivi di build/deploy e servizi vanno registrati nel rapporto di collaudo. La conferma dell’account TEST non autorizza a considerare configurato un account LIVE.
 
 ## Registro rischi
 

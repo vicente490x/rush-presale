@@ -186,6 +186,9 @@ button { color: inherit; }
 .orders-table th { color: #b9b9bf; background: #151518; }
 .orders-table input, .orders-table select { min-height: 32px; border: 1px solid #414147; background: #111; color: white; }
 .turnstile-slot { min-height: 66px; }
+.challenge-help { border-left: 2px solid #d54b4b; padding: 0 0 0 12px; }
+.challenge-help p { color: #c7c5c5; font-size: 12px; line-height: 1.6; }
+.challenge-retry { min-height: 44px; padding: 8px 16px; border: 1px solid #915454; background: #1b1010; color: #fff; cursor: pointer; }
 .total-row { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; color: #c9c9ce; font-size: 13px; }
 .total-row strong { color: white; font-size: 19px; }
 .fine-print { color: #9999a1; font-size: 11px; line-height: 1.55; }

@@ -46,6 +46,7 @@ npm audit --audit-level=high
 npm run build
 npm run test:integration
 npm run test:migration
+npm run test:backup
 npm run test:http
 ```
 
@@ -76,3 +77,12 @@ Non sono stati completati pagamento TEST remoto, ricezione email, rimborso provi
 ## Gestione anomalie
 
 Registrare ID, requisito, gravità, passi, atteso/osservato, commit, ambiente ed evidenza priva di segreti. P1 economici/autorizzativi impediscono il rilascio; P2 richiede valutazione del referente. Dopo una correzione ripetere il caso e la regressione pertinente. Usare il registro rischi per punti organizzativi che non rappresentano un difetto di codice.
+
+## Estensione operativa 2.1.1
+
+- Nuovi test server: token anti-bot oltre limite rifiutato senza rete, IP non valido omesso, errori e timeout provider mai autorizzativi. La copertura hostname esatto resta nel collaudo esistente.
+- Prova locale backup/ripristino del 26 ottobre: PASS su PostgreSQL 16.15; archivio custom 33.287 byte, dump 61 ms, ripristino 40 ms. Importi, date, relazioni termini, outbox e checksum migrazioni identici; la modifica della copia non altera la sorgente. Tempi del solo archivio di collaudo, non RPO/RTO del servizio commerciale.
+- Stripe TEST: account Sandbox di eccomerce confermato; webhook canonico enabled con tutti gli eventi attesi. Nessuna sessione Checkout presente al momento della verifica: pagamento/rimborso provider completo ancora aperto.
+- Screenshot cliente: verifica Cloudflare in corso con modalità Isolamento del browser. Il dato è un’indicazione di possibile incompatibilità, non una diagnosi certa. La correzione aggiunge recupero e feedback, senza bypassare la protezione.
+
+Regressione locale 2.1.1: lint, TypeScript e build PASS; 31 test unitari PASS (contenitore integrazione escluso dal solo comando unitario), 37 casi di integrazione più contenitore PASS senza skip, migrazione PASS, backup/ripristino PASS, 33 controlli HTTP PASS, npm audit zero vulnerabilità note.

@@ -43,4 +43,11 @@ jobs:
       - run: npm run verify
       - run: npm run test:integration
       - run: npm run test:migration
+      - name: Install PostgreSQL backup tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes postgresql-client-16
+      - run: npm run test:backup
+        env:
+          PG_BIN_DIR: /usr/lib/postgresql/16/bin
       - run: npm run test:http
