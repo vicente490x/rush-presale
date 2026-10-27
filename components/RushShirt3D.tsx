@@ -5,8 +5,14 @@ import { createElement, useEffect, useRef, useState } from 'react';
 import type { ModelViewerElement } from '@google/model-viewer';
 
 export default function RushShirt3D({ onPhotos }: { onPhotos: () => void }) {
+  const [attempt, setAttempt] = useState(0);
+  return <ShirtViewer key={attempt} onPhotos={onPhotos} onRetry={() => setAttempt(value => value + 1)} />;
+}
+
+function ShirtViewer({ onPhotos, onRetry }: { onPhotos: () => void; onRetry: () => void }) {
   const viewer = useRef<ModelViewerElement>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [failure, setFailure] = useState<'graphics' | 'load' | 'timeout'>('load');
   const [progress, setProgress] = useState(0);
   const [rotating, setRotating] = useState(false);
 
@@ -14,15 +20,24 @@ export default function RushShirt3D({ onPhotos }: { onPhotos: () => void }) {
     const element = viewer.current;
     if (!element) return;
     let disposed = false;
-    const fail = () => { if (!disposed) setState('error'); };
-    const timeout = window.setTimeout(fail, 45000);
+    const fail = (reason: 'graphics' | 'load' | 'timeout' = 'load') => {
+      if (disposed) return;
+      window.clearTimeout(timeout);
+      setFailure(reason);
+      setState('error');
+    };
+    const timeout = window.setTimeout(() => fail('timeout'), 45000);
+    const modelError = (event: Event) => {
+      const type = (event as CustomEvent<{ type?: string }>).detail?.type;
+      fail(type === 'webglcontextlost' ? 'graphics' : 'load');
+    };
     const loaded = () => { window.clearTimeout(timeout); setState('ready'); };
     const updateProgress = (event: Event) => setProgress(Math.round((event as CustomEvent<{ totalProgress: number }>).detail.totalProgress * 100));
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const stop = () => { element.autoRotate = false; setRotating(false); };
     const visibility = () => { if (document.hidden) stop(); };
     element.addEventListener('load', loaded);
-    element.addEventListener('error', fail);
+    element.addEventListener('error', modelError);
     element.addEventListener('progress', updateProgress);
     reducedMotion.addEventListener('change', stop);
     document.addEventListener('visibilitychange', visibility);
@@ -30,20 +45,20 @@ export default function RushShirt3D({ onPhotos }: { onPhotos: () => void }) {
     Promise.resolve().then(async () => {
       if (disposed) return;
       const context = document.createElement('canvas').getContext('webgl2');
-      if (!context) { fail(); return; }
+      if (!context) { fail('graphics'); return; }
       context.getExtension('WEBGL_lose_context')?.loseContext();
       await import('@google/model-viewer');
       if (disposed) return;
       element.autoRotate = !reducedMotion.matches;
       setRotating(element.autoRotate);
       if (element.loaded) loaded();
-    }).catch(fail);
+    }).catch(() => fail());
     return () => {
       disposed = true;
       window.clearTimeout(timeout);
       element.autoRotate = false;
       element.removeEventListener('load', loaded);
-      element.removeEventListener('error', fail);
+      element.removeEventListener('error', modelError);
       element.removeEventListener('progress', updateProgress);
       reducedMotion.removeEventListener('change', stop);
       document.removeEventListener('visibilitychange', visibility);
@@ -67,7 +82,13 @@ export default function RushShirt3D({ onPhotos }: { onPhotos: () => void }) {
       {state === 'error' ? (
         <div className="shirt-viewer-fallback">
           <Image src="/assets/mockup-fronte.png" alt="Maglietta RUSH, vista frontale" width={960} height={1440} sizes="(max-width: 800px) 100vw, 58vw" />
-          <p role="status">La vista 3D non è disponibile. Puoi continuare a esplorare le fotografie.</p>
+          <p role="status">{failure === 'graphics'
+            ? 'Questo browser non rende disponibile la grafica 3D (WebGL). Le fotografie restano disponibili.'
+            : failure === 'timeout'
+              ? 'Il caricamento 3D sta impiegando troppo tempo. Controlla la connessione e riprova.'
+              : 'Non è stato possibile caricare la vista 3D. Controlla la connessione e riprova.'}</p>
+          {failure === 'graphics' && <p>Prova ad aprire la pagina direttamente in Safari o Chrome aggiornato. Alcune restrizioni del browser possono limitare la grafica 3D.</p>}
+          <button type="button" onClick={onRetry}>RIPROVA VISTA 3D</button>
           <button type="button" onClick={onPhotos}>TORNA ALLE FOTO</button>
         </div>
       ) : (
