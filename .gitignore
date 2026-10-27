@@ -12,4 +12,5 @@ prisma/*.db*
 data/*.db*
 data/backups/
 *.tsbuildinfo
+__pycache__/
 !.env.production.example

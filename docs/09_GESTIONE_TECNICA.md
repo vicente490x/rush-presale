@@ -1,5 +1,7 @@
 # OPS-TECH-01 — Installazione, esercizio e manutenzione
 
+Aggiornamento 2.2.0: dopo le migrazioni eseguire `npm run create-admin` per creare AdminUser. `admin:setup` e `staging:credentials` producono le credenziali, ma non creano l’account. Per una destinazione staging/production usare `npm run create-admin -- --env-file <file-dedicato>`. Il login legge l’hash dal DB; il bootstrap non sovrascrive un’identità esistente. Le nuove sessioni sono legate anche all’impronta dell’hash in AdminUser. Consultare il [TAD corrente](TAD_Architettura_Tecnica_RUSH_Presale.docx).
+
 **Release 2.1.0 · 26 ottobre 2026**
 
 ## Installazione e configurazione

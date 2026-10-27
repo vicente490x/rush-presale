@@ -1,0 +1,49 @@
+
+> rush-presale@2.2.0 test
+> node --import tsx --test tests/*.test.ts
+
+✔ adds calendar months and clamps to the last day of shorter months (16.1709ms)
+✔ preserves the day when the target month has it (0.8076ms)
+✔ 3D CSP permits WebAssembly without allowing JavaScript eval (17.5372ms)
+✔ ADMIN password policy rejects bcrypt truncation and control characters (25.9583ms)
+✔ 3D GLB is valid v2 and self-contained with embedded textures (21.6491ms)
+﹣ PostgreSQL integration (real DB, explicit Stripe/Resend test doubles) (2.5507ms) # SKIP
+✔ local admin hash survives Next dotenv expansion and still verifies the password (2002.1598ms)
+✔ database TLS probe sends only SSLRequest and refuses a plaintext server (361.52ms)
+✔ database TLS probe times out safely and rejects an invalid URL without disclosing it (99.7751ms)
+✔ production preflight requires every launch, provider and seller prerequisite without printing values (57.4626ms)
+✔ LIVE is refused in development/Preview/staging regardless of the opt-in flags (21.1463ms)
+✔ payment key and signed event mode must agree; explicit production accepts LIVE only (83.834ms)
+✔ production Prisma file is explicit, confirmed, preserves dollars and ignores inherited URLs (11.4151ms)
+✔ staging storefront is public while admin stays protected, even with old gate configuration (3589.1436ms)
+✔ Turnstile verifies server-side success AND the exact canonical hostname (183.4213ms)
+✔ mutations reject absent/foreign origins and cross-site fetches even with a canonical Origin (23.8312ms)
+✔ chunked JSON/webhook bytes are limited even when Content-Length is missing or forged (6.3104ms)
+✔ cron refuses missing, short and altered secrets before running jobs (45.7178ms)
+✔ SEC-06 direct requests cannot rotate rate-limit identity through spoofed forwarding headers (218.9849ms)
+✔ SEC-04 production CSP blocks inline scripts and handler attributes without a request nonce (2.5153ms)
+✔ financial schemas reject amount/status mass assignment and malformed quantities (154.5045ms)
+✔ 12 calendar months clamp end-of-month and leap years, preserving time (9.4249ms)
+✔ 18 CSV neutralizes formulas including whitespace and quotes (22.9651ms)
+✔ 18 XLSX is a ZIP workbook with distinct producer sheet and safe string cells (28.5834ms)
+✔ staging and production refuse live keys even when legacy opt-in is true (2.4468ms)
+✔ nonproduction mail requires an exact explicitly allowlisted recipient (1.5266ms)
+✔ bounded JSON rejects malformed and oversized bodies without parsing them (11.2468ms)
+✔ Vercel Preview defaults to protected staging and rejects an explicit production override (2.514ms)
+✔ staging preflight validates format without claiming provider verification (63.1743ms)
+✔ staging preflight rejects local DB, shared secrets, plaintext passwords and legacy mock flags (2.4528ms)
+✔ staging preflight requires explicit TLS with certificate verification on both database URLs (2.1737ms)
+✔ public staging requires no storefront password or gate secret (2.0276ms)
+✔ staging credentials preserve literal bcrypt dollars, omit plaintext and use distinct secrets (1564.4946ms)
+✔ explicit staging Prisma file never inherits missing database URLs or expands dollar characters (6.5006ms)
+✔ SEC-14 real Upstash timeout cannot grant checkout authorization (no network) (12.5796ms)
+✔ Turnstile rejects missing and oversized tokens before contacting the provider (6.8629ms)
+✔ Turnstile forwards a valid IP only and never treats provider failure as authorization (359.9119ms)
+ℹ tests 37
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 6170.2541

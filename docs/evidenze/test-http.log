@@ -1,0 +1,61 @@
+
+> rush-presale@2.2.0 test:http
+> node --import tsx scripts/test-http.ts
+
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "rush_audit_final", schema "http_2202a2a678fd5c4d" at "127.0.0.1:55432"
+
+4 migrations found in prisma/migrations
+
+Applying migration `20261013000100_initial`
+Applying migration `20261016000100_staging_hardening`
+Applying migration `20261016000200_security_sessions`
+Applying migration `20261027000100_admin_users`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261013000100_initial/
+    └─ migration.sql
+  └─ 20261016000100_staging_hardening/
+    └─ migration.sql
+  └─ 20261016000200_security_sessions/
+    └─ migration.sql
+  └─ 20261027000100_admin_users/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+PASS checkout CSRF rejects foreign origin before provider calls
+PASS checkout fails closed when distributed limiter is not configured
+PASS failed checkout creates no order
+PASS public API accessible without gate cookie
+PASS robots noindex
+PASS webhook bypasses gate and requires signature
+PASS retired login issues no cookie
+PASS old preview bookmark redirects home
+PASS SEC-15 login forms use POST and disclose JavaScript requirement before hydration
+PASS public home branding, noindex and banner without a password
+PASS SPEC-02 home logo is visible before JavaScript hydration
+PASS presale SSR responds
+PASS SEC-04 fresh CSP nonce matches every inline script and responses cannot be cached
+PASS Next image optimizer serves brand asset without a gate
+PASS SEC-07 optimizer rejects internal API and remote storage URLs
+PASS framework subrequest header cannot bypass admin protection
+PASS server-protected admin renders
+PASS CSRF rejects foreign origin
+PASS settings persisted through real HTTP API
+PASS signed webhook, duplicate, paid count and sale remains open
+PASS dashboard counts and gross/refunded/net totals
+PASS delivery update persisted and audited
+PASS confirmation contains state and no customer PII
+PASS CSV endpoint escapes formulas and quotes
+PASS XLSX endpoint has safe cells and manufacturer summary
+PASS search/filter/pagination
+PASS staging cron authenticated and dry-run only
+PASS production timestamp persists without closing sale
+PASS manual closure independent of production
+PASS diagnostics has DB/webhook status without secrets
+PASS authenticated cleanup removes expired sessions and limiter rows
+PASS logout clears session cookie
+PASS SEC-02 copied session rejected after logout
+{"checks":33,"result":"PASS","scope":"Production Next server over local HTTP; generated signed Stripe fixtures; no external API calls; no browser rendering","visualBrowser":"NOT EXECUTED — no connected browser","createdAt":"2026-10-27T12:13:19.214Z"}

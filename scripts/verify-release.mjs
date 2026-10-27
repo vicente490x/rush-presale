@@ -39,4 +39,3 @@ for (const [name, args] of commands.slice(start)) {
   console.log(results.at(-1).result + ' ' + name);
   if (result.status !== 0) { console.error(log.slice(-5000)); process.exitCode = 1; break; }
 }
-

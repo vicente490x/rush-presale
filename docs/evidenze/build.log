@@ -1,0 +1,68 @@
+
+> rush-presale@2.2.0 build
+> prisma generate && next build
+
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.12.0) to .\node_modules\@prisma\client in 315ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+▲ Next.js 16.4.2 (Turbopack)
+✓ Running next.config.ts took 229ms
+- Experiments (use with caution):
+  · optimizePackageImports
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.2s
+  Running TypeScript ...
+  Finished TypeScript in 22.5s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/14) ...
+  Generating static pages using 11 workers (3/14) 
+  Generating static pages using 11 workers (6/14) 
+  Generating static pages using 11 workers (10/14) 
+✓ Generating static pages using 11 workers (14/14) in 961ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /admin
+├ ƒ /admin/impostazioni
+├ ƒ /admin/login
+├ ƒ /anteprima
+├ ƒ /api/admin/dashboard
+├ ƒ /api/admin/diagnostics
+├ ƒ /api/admin/expiry
+├ ƒ /api/admin/export
+├ ƒ /api/admin/login
+├ ƒ /api/admin/logout
+├ ƒ /api/admin/orders
+├ ƒ /api/admin/orders/[id]/delivery
+├ ƒ /api/admin/orders/[id]/refund
+├ ƒ /api/admin/presale
+├ ƒ /api/admin/production
+├ ƒ /api/admin/settings
+├ ƒ /api/cron/cleanup
+├ ƒ /api/cron/daily
+├ ƒ /api/orders
+├ ƒ /api/orders/[orderNumber]
+├ ƒ /api/staging/login
+├ ƒ /api/status
+├ ƒ /api/stripe/webhook
+├ ƒ /conferma
+├ ƒ /cookie
+├ ƒ /presale
+├ ƒ /privacy
+├ ƒ /rimborsi
+├ ƒ /robots.txt
+└ ƒ /termini
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+

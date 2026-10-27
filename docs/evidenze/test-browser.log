@@ -1,0 +1,37 @@
+
+> rush-presale@2.2.0 test:browser
+> node --import tsx scripts/test-browser.ts
+
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "rush_audit_final", schema "browser_c399718d8384e528" at "127.0.0.1:55432"
+
+4 migrations found in prisma/migrations
+
+Applying migration `20261013000100_initial`
+Applying migration `20261016000100_staging_hardening`
+Applying migration `20261016000200_security_sessions`
+Applying migration `20261027000100_admin_users`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261013000100_initial/
+    └─ migration.sql
+  └─ 20261016000100_staging_hardening/
+    └─ migration.sql
+  └─ 20261016000200_security_sessions/
+    └─ migration.sql
+  └─ 20261027000100_admin_users/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+PASS 3D non scaricato prima della selezione
+PASS Foto originali e zoom con chiusura da tastiera
+PASS GLB reale caricato con CSP di produzione
+PASS Fronte/retro, rotazione, ripristino, drag e zoom limitato
+PASS Ritorno alle foto conserva taglia, quantità e totale
+PASS Admin anonimo rediretto; dashboard e impostazioni renderizzate con sessione DB valida
+PASS Mobile 390px: touch non cambia slide, nessun overflow, reduced motion rispettato
+PASS Errore rete GLB: fallback fotografico e recupero senza ricaricare
+PASS Nessun errore JavaScript, texture o CSP nel percorso desktop
+PASS WebGL disabilitato: fallback fotografico disponibile
