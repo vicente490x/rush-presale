@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set('Content-Security-Policy', csp);
   let response: NextResponse = NextResponse.next({ request: { headers: requestHeaders } });
   // Public brand assets may be cached; storefront and API responses remain private.
-  const brandAsset = ['/assets/logo.png', '/assets/mockup-fronte.png', '/assets/mockup-retro.png'].includes(path);
+  const brandAsset = ['/assets/logo.png', '/assets/mockup-fronte.png', '/assets/mockup-retro.png', '/assets/models/rush-oversized-shirt.glb'].includes(path);
   if ((path === '/admin' || path.startsWith('/admin/') || path.startsWith('/api/admin/')) && path !== '/admin/login' && path !== '/api/admin/login' && !await isAdminSession(request.cookies.get(cookieName)?.value)) {
     response = path.startsWith('/api/') ? NextResponse.json({ error: 'Autenticazione richiesta.' }, { status: 401 }) : NextResponse.redirect(new URL('/admin/login', request.url));
   }

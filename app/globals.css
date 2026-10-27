@@ -219,6 +219,7 @@ button { color: inherit; }
   .orders-heading { align-items: stretch; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .ember-field { display: none; }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
@@ -253,3 +254,14 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .gallery-controls button, .gallery-controls button[aria-current="true"] { position: relative; width: 44px; height: 44px; background: transparent; }
 .gallery-controls button::after { content: ''; position: absolute; left: 5px; right: 5px; top: 21px; height: 3px; background: #4c4c4e; }
 .gallery-controls button[aria-current="true"]::after { background: var(--red); }
+.gallery-controls .gallery-3d-button { color: #fff; font-weight: 700; font-size: 13px; }
+.gallery-controls .gallery-3d-button::after { top: 36px; }
+.shirt-viewer { width: 100%; min-height: 380px; }
+.shirt-viewer model-viewer { display: block; width: 100%; height: min(62vh, 650px); min-height: 320px; --poster-color: #101114; }
+.shirt-viewer-loading { padding: 18px; color: #fff; background: #101114; text-align: center; }
+.shirt-viewer-loading progress { display: block; width: 100%; margin-top: 12px; accent-color: var(--red); }
+.shirt-viewer-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 12px; }
+.shirt-viewer-controls button, .shirt-viewer-fallback button { min-height: 44px; padding: 10px 14px; background: #202124; border: 1px solid #656569; border-radius: 4px; color: #fff; cursor: pointer; font: inherit; font-size: 11px; }
+.shirt-viewer-controls button:disabled { opacity: .5; cursor: wait; }
+.shirt-viewer-fallback { text-align: center; padding-bottom: 18px; }
+.shirt-viewer-fallback p { padding: 0 16px; }

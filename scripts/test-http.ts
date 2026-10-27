@@ -33,6 +33,8 @@ async function main() {
   const { reserveOrder } = await import('../lib/checkout');
   const { initialTerms } = await import('../lib/operational-schema');
   const { createAdminSession, isAdminSession } = await import('../lib/admin-auth');
+  const { initializeAdmin, adminId } = await import('../lib/admin-account');
+  await initializeAdmin({ id: adminId(), email: 'admin@example.com', passwordHash: env.ADMIN_PASSWORD_HASH });
   mkdirSync('.test-results', { recursive: true });
   const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', '3100'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   let logs = '';
@@ -81,7 +83,8 @@ async function main() {
       const csp = home.headers.get('content-security-policy') ?? '';
       const nonce = csp.match(/'nonce-([^']+)'/)?.[1]; assert.ok(nonce);
       const scriptPolicy = csp.split(';').find(value => value.trim().startsWith('script-src '))!;
-      assert.ok(!scriptPolicy.includes('unsafe-inline')); assert.ok(!scriptPolicy.includes('unsafe-eval'));
+      assert.ok(!scriptPolicy.includes("'unsafe-inline'")); assert.ok(!scriptPolicy.includes("'unsafe-eval'"));
+      assert.ok(scriptPolicy.includes("'wasm-unsafe-eval'"));
       for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
         if (match[2].trim()) assert.ok(match[1].includes(`nonce="${nonce}"`), 'inline script must have matching nonce');
       }
