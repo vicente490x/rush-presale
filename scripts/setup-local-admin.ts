@@ -85,7 +85,7 @@ async function main() {
   await writeFile(envPath, content, { encoding: 'utf8', mode: 0o600 });
 
   stdout.write('Credenziali admin salvate in .env.local. I segreti non sono stati mostrati.\n');
-  stdout.write('Riavvia il server locale e accedi a http://localhost:3000/admin/login.\n');
+  stdout.write('Esegui npm run db:migrate e npm run create-admin per inizializzare l’account nel database. Un account esistente non viene modificato.\n');
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) void main().catch((error: unknown) => {
