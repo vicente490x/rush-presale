@@ -1,5 +1,7 @@
 # TAD — Architettura tecnica RUSH Presale
 
+Aggiornamento del 28 ottobre 2026: [gate e verifiche finali](../11_FINALIZZAZIONE_LIVE.md), [matrice test](../12_CASI_TEST_FINALI.md). Gli allegati Office/screenshot del 27 ottobre documentano la baseline precedente.
+
 ## 1. Perimetro e decisioni architetturali
 Il candidato 2.2.0 estende la baseline 0e3ee36 nel repository vicente490x/rush-presale. Next.js App Router serve pagine, API e proxy; Prisma accede a PostgreSQL. Il browser non è autorevole per prezzo, stato economico o autorizzazione. Stripe ospita il pagamento; Resend gestisce l’invio email; Cloudflare Turnstile valida l’interazione anti-bot; Upstash Redis limita il checkout. Non sono introdotti backend alternativi, autenticazione esterna o storage remoto per il GLB.
 
@@ -40,7 +42,9 @@ Le API amministrative passano attraverso adminRoute, che richiama requireAdmin a
 
 readBytes limita il corpo mentre lo legge, senza fidarsi soltanto di Content-Length; readJson restituisce errore controllato per JSON malformato. Le mutazioni amministrative e l’ordine richiedono Origin canonica e rifiutano sec-fetch-site cross-site. Schemi Zod con proprietà consentite limitano l’assegnazione arbitraria di stati/importi. I contratti API completi sono nell’appendice dedicata.
 
-I servizi checkout, presale, admin-operations, refunds ed expiry orchestrano le transazioni. Gli handler traducono DomainError in status HTTP e registrano codici fissi per gli errori inattesi. Le risposte pubbliche sull’ordine omettono nome ed email; il codice casuale è un riferimento da conservare riservato.
+I servizi checkout, presale, admin-operations, refunds ed expiry orchestrano le transazioni. Gli handler traducono DomainError in status HTTP e registrano codici fissi per gli errori inattesi. Le risposte sull'ordine omettono nome/email e oggetti grezzi Stripe. Il codice casuale è un riferimento, non una credenziale sufficiente: GET /api/orders/:orderNumber richiede un cookie HMAC associato all'ordine e valido sette giorni, emesso insieme al checkout, HttpOnly/Secure/SameSite=Lax e limitato a /api/orders. Il segreto SESSION_SECRET è utilizzato con namespace distinto dalle sessioni admin. Un cookie per ordine supporta più acquisti nello stesso browser. Rotazione del segreto invalida anche questi accessi.
+
+La conferma recupera la Session registrata nel DB espandendo payment_intent.latest_charge. Il validatore confronta modalità TEST/LIVE, importo, valuta, metadata, stato e riferimenti Session/Intent/Charge. PAID richiede anche il PAID nel DB, prodotto dal webhook firmato e idempotente; la GET non effettua scritture economiche. Pending, API non disponibile e mismatch non diventano successi. Le risposte non sono memorizzabili. L'interfaccia effettua polling ogni tre secondi per circa un minuto e consente riprova; mostra soltanto i dati minimizzati derivati dal Charge. Le date sono UTC nel backend ed Europe/Rome nell'interfaccia. I metodi abilitati nel checkout restano carta e relativi wallet supportati; il parser non inventa dettagli se assenti.
 
 ## 6. Modello dati e relazioni
 ![Relazioni operative principali](../evidenze/modello-dati.png)

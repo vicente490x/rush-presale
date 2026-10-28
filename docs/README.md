@@ -1,5 +1,9 @@
 # RUSH PRE-SALE — Documentazione di progetto
 
+## Aggiornamento 28 ottobre 2026
+
+[Report finale e gate LIVE](11_FINALIZZAZIONE_LIVE.md) · [casi di test aggiornati](12_CASI_TEST_FINALI.md) · [manuale aggiornato](sorgenti/Manuale_Uso_RUSH_Presale.md) · [TAD aggiornato](sorgenti/TAD_Architettura_Tecnica_RUSH_Presale.md). Questi sorgenti Markdown includono la conferma verificata e sostituiscono, per le sezioni interessate, i contenuti degli Office del 27 ottobre. Gli allegati precedenti non sono stati rigenerati e non certificano questa revisione. **Rilascio bloccato** fino alla chiusura dei gate del report.
+
 ## Consegna 2.2.0 — 27 ottobre 2026
 
 Il dossier corrente comprende [Manuale](Manuale_Uso_RUSH_Presale.docx), [BUR](BUR_RUSH_Presale.docx), [FUD](FUD_RUSH_Presale.docx), [TAD](TAD_Architettura_Tecnica_RUSH_Presale.docx), [registro Excel](Casi_di_Test_RUSH_Presale.xlsx) e [Rapporto di collaudo](Rapporto_Collaudo_RUSH_Presale.docx).

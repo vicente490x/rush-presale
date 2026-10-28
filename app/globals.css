@@ -265,3 +265,10 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .shirt-viewer-controls button:disabled { opacity: .5; cursor: wait; }
 .shirt-viewer-fallback { text-align: center; padding-bottom: 18px; }
 .shirt-viewer-fallback p { padding: 0 16px; }
+
+.payment-summary { text-align: left; margin: 2rem 0; }
+.payment-summary > div { display: flex; justify-content: space-between; gap: 1rem; padding: .8rem 0; border-bottom: 1px solid #ffffff24; }
+.payment-summary dt { color: #aaa; }
+.payment-summary dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.confirm-card .order-code { overflow-wrap: anywhere; }
+@media (max-width: 480px) { .payment-summary > div { flex-direction: column; gap: .3rem; } .payment-summary dd { text-align: left; } }

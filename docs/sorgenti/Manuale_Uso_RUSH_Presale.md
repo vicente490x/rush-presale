@@ -39,11 +39,15 @@ Selezionare una taglia disponibile fra XS, S, M, L, XL e XXL. Le taglie disabili
 Compilare nome, cognome ed email, leggere le condizioni e selezionare l’accettazione. Se le condizioni o il listino cambiano durante la visita, l’accettazione viene richiesta nuovamente. La verifica anti-bot deve essere completata prima di attivare PRE-SALE. La disponibilità definitiva viene controllata dal server quando si avvia l’ordine.
 
 ## 5. Pagamento, conferma e rimborso
-PRE-SALE apre il Checkout ospitato da Stripe. Il sito non conserva i dati completi della carta. Dopo il pagamento il ritorno alla conferma mostra lo stato comunicato dal server; il solo ritorno dal provider non prova che il pagamento sia riuscito. Conservare il codice ordine e l’email ricevuta.
+PRE-SALE apre il Checkout ospitato da Stripe. Il sito non conserva i dati completi della carta. Dopo il pagamento il ritorno automatico alla conferma mostra lo stato verificato dal server sia su Stripe sia nell'ordine registrato; il solo ritorno dal provider non prova che il pagamento sia riuscito. Conservare il codice ordine e l’email ricevuta.
+
+La pagina mostra codice ordine, RUSH T-SHIRT, taglia, quantità e totale. Solo dopo conferma attendibile compaiono totale pagato, metodo effettivo (carta o wallet rilevato), circuito/ultime quattro cifre se disponibili e data/ora italiana. Durante l'elaborazione non ripetere il pagamento: la pagina ricontrolla automaticamente per circa un minuto e poi offre RICONTROLLA PAGAMENTO. Un errore di verifica non equivale a un pagamento fallito; non procedere a un secondo acquisto senza verificare l'ordine. L'annullamento nel Checkout riporta alla pre-sale con un avviso.
+
+La consultazione richiede lo stesso browser che ha iniziato il checkout e il relativo cookie tecnico, valido sette giorni. Il ricaricamento è consentito; il solo codice ordine non autorizza l'accesso. Da un altro dispositivo, dopo cancellazione/scadenza del cookie o per ordini anteriori a questa modifica, contattare l'assistenza: non esiste una procedura automatica di recupero dell'accesso cliente. TORNA ALLA HOME riporta alla pagina iniziale.
 
 Ogni ordine memorizza prezzo, condizioni e data di pagamento. La scadenza iniziale è due mesi di calendario dal pagamento, con adeguamento all’ultimo giorno valido del mese. Se la produzione non è stata avviata alla scadenza, il processo pianificato richiede il rimborso. La conferma arriva dopo l’esito di Stripe; i tempi di accredito dipendono dal metodo di pagamento.
 
-La consegna avviene durante una serata RUSH o tramite PR, secondo le condizioni accettate. La piattaforma non gestisce una spedizione tradizionale. Con PRE-SALE CHIUSA non si possono avviare nuove prenotazioni. Gli ordini precedenti restano consultabili e gestibili.
+La consegna avviene durante una serata RUSH o tramite PR, secondo le condizioni accettate. La piattaforma non gestisce una spedizione tradizionale. Con PRE-SALE CHIUSA non si possono avviare nuove prenotazioni. Gli ordini precedenti restano gestibili nell'area amministrativa; la consultazione cliente richiede il cookie valido descritto sopra.
 
 ## 6. Accesso amministrativo
 Aprire /admin/login, inserire la password dell’account configurato e completare la verifica anti-bot. Un errore non rivela se l’account esiste. Dopo dieci tentativi nella finestra di 15 minuti il server rifiuta ulteriori accessi da quella sorgente. In locale, fuori dalle build di produzione, il controllo CAPTCHA è escluso soltanto su loopback.

@@ -127,7 +127,17 @@ async function main() {
     const dashboard = await (await get('/api/admin/dashboard', cookie)).json(); check('dashboard counts and gross/refunded/net totals', () => { assert.equal(dashboard.total, 2); assert.equal(dashboard.paidOrders, 1); assert.equal(dashboard.grossCents, 5000); assert.equal(dashboard.refundedCents, 0); assert.equal(dashboard.revenueCents, 5000); assert.equal(dashboard.bySize.M, 2); });
     const delivery = await post('/api/admin/orders/' + order.id + '/delivery', { status: 'CONSEGNATA' }, cookie); check('delivery update persisted and audited', () => assert.equal(delivery.status, 200));
     assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).deliveryStatus, 'CONSEGNATA');
-    const lookup = await (await get('/api/orders/' + order.orderNumber, gate)).json(); check('confirmation contains state and no customer PII', () => { assert.equal(lookup.paymentStatus, 'PAID'); assert.equal(lookup.email, undefined); });
+    const lookup = await get('/api/orders/' + order.orderNumber, gate);
+    check('confirmation denies order-number-only access', () => assert.equal(lookup.status, 403));
+    const { issueOrderAccess, orderAccessCookie } = await import('../lib/order-access');
+    const orderCookie = orderAccessCookie(order.orderNumber) + '=' + issueOrderAccess(order.orderNumber);
+    // A missing association must fail before any external provider request.
+    const savedSession = (await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).stripeSessionId;
+    await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: null } });
+    const unavailable = await get('/api/orders/' + order.orderNumber, orderCookie);
+    check('confirmation fails closed without a stored Stripe session', () => assert.equal(unavailable.status, 503));
+    assert.equal((await unavailable.json()).paymentStatus, undefined);
+    await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: savedSession } });
     const csv = await (await get('/api/admin/export?format=csv', cookie)).text(); check('CSV endpoint escapes formulas and quotes', () => assert.ok(csv.includes('"\'=HYPERLINK(""evil"")"')));
     const xlsxResponse = await get('/api/admin/export?format=xlsx', cookie); const zip = unzipSync(new Uint8Array(await xlsxResponse.arrayBuffer()));
     check('XLSX endpoint has safe cells and manufacturer summary', () => { assert.equal(xlsxResponse.status, 200); assert.ok(strFromU8(zip['xl/workbook.xml']).includes('Produttore')); assert.ok(!strFromU8(zip['xl/worksheets/sheet1.xml']).includes('<f>')); });

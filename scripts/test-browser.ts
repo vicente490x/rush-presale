@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium, devices, type Browser } from '@playwright/test';
+import { checkConfirmation } from './confirmation-browser-checks';
 
 async function main() {
   const db = new URL(process.env.RUSH_TEST_DATABASE_URL ?? '');
@@ -133,6 +134,7 @@ async function main() {
     assert.equal(await phone.getByRole('button', { name: 'Ingrandisci immagine frontale' }).isVisible(), true);
     pass('Errore rete GLB: fallback fotografico e recupero senza ricaricare');
     assert.deepEqual(errors, []); pass('Nessun errore JavaScript, texture o CSP nel percorso desktop');
+    for (const result of await checkConfirmation(browser, base)) pass(result);
     const noWebgl = await chromium.launch({ executablePath: process.env.RUSH_BROWSER_EXECUTABLE || undefined, args: ['--disable-webgl'] });
     try {
       const unsupported = await noWebgl.newPage();

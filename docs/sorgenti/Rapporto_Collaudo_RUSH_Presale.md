@@ -1,5 +1,9 @@
 # Rapporto di collaudo RUSH Presale
 
+## Aggiornamento 28 ottobre 2026
+
+Il [report di finalizzazione](../11_FINALIZZAZIONE_LIVE.md) e la [matrice dei nuovi casi](../12_CASI_TEST_FINALI.md) documentano l'estensione della conferma pagamento, gli esiti correnti e i gate aperti. I risultati del 27 ottobre riportati sotto restano validi come evidenza storica del candidato precedente, non come prova automatica del nuovo SHA. Stato rilascio: **BLOCCATO**, in attesa delle verifiche esterne elencate nel report aggiornato.
+
 ## 1. Identificazione e ambiente
 Candidato 2.2.0, branch feature/rush-final-release, baseline 0e3ee36. Data delle prove: 27/10/2026. Windows, PostgreSQL 18.6 locale isolato, provider Stripe/Resend controllati, browser Chromium e mobile emulato. Nessuna vendita remota. Runtime Node v24.15.0; browser 156.0.8078.4. I log e gli hash delle esecuzioni sono conservati in docs/evidenze/esecuzione.json.
 
