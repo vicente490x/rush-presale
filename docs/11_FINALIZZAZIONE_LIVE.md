@@ -27,16 +27,18 @@ Nessuna nuova migrazione. Documentazione aggiornata nei sorgenti Markdown di man
 | Test unitari | PASS locale | 41 passati, 1 contenitore integrazione saltato senza DB locale; cinque nuovi casi aggregati |
 | Build Next di produzione | PASS con APP_ENV=staging | Artefatto ottimizzato, URL DB loopback fittizi; non prova connettività Neon. Il primo tentativo senza ambiente è stato rifiutato dal gate produzione, poi ripetuto con staging esplicito |
 | Dipendenze | PASS | Audit iniziale: una moderata in qs. Dopo aggiornamento: `npm audit --audit-level=moderate`, zero vulnerabilità alla data della verifica |
-| PostgreSQL, migrazioni, backup, HTTP, browser sul nuovo commit | IN ATTESA CI | Runner locale senza PostgreSQL; download Chromium locale non valido. Devono essere eseguiti dal workflow con PostgreSQL 16 isolato |
+| PostgreSQL, migrazioni, backup, HTTP, browser sul candidato 579b2b0 | PASS CI | 41 test integrazione, upgrade migrazioni, backup/restore isolato, 34 controlli HTTP, 12 gruppi browser inclusi conferma 1440/390px. Esecuzione su PostgreSQL 16 isolato; provider simulati |
 | Stato pubblico del prodotto | PASS limitato | Browser su `/presale`: banner TEST, prezzo 25€, soglia 15, 0 pezzi pagati; non è un collaudo dell'acquisto |
 | Checkout TEST esterno | BLOCCATO | Browser: «La verifica di sicurezza non è stata completata». Nessun aggiramento di Turnstile; account Stripe collegato ha due sessioni scadute/unpaid e nessuna pagata alla lettura |
 | Stripe webhook | CONFIGURATO TEST | Account sandbox, endpoint abilitato verso `/api/stripe/webhook`, otto eventi checkout/rimborso; non equivale a consegna webhook di un pagamento reale TEST |
 | Neon staging | PASS letture | Quattro migrazioni completate, `AdminUser` presente, ruolo runtime limitato verificato tramite catalogo |
 | Admin persistente | PRESENTE; accesso remoto non collaudato | Account attivo `rush-admin`, ruolo ADMIN, email scelta dal proprietario già associata. Nessun duplicato o reset; password non letta/esposta |
 | Email/Redis | PARZIALE | Redis PONG documentato in PR #4; nessuna nuova prova di consegna in inbox o PONG in questa sessione |
-| Vercel | READY baseline TEST | `dpl_AsGb9nhd9dGKBtfaHEZvf9LfPfzB`, SHA b30f303, alias pubblico; nessuna prova del nuovo candidato finché non esiste il deployment corrispondente |
+| Vercel | Baseline TEST attiva; Preview incompleto | Baseline pubblica `dpl_AsGb9nhd9dGKBtfaHEZvf9LfPfzB`. Preview `dpl_3Z3JbK8tKv6HHfF4DhfmVpZY1Gzv`, SHA 579b2b0, READY ma `/api/status` restituisce 503. Credenziali dei servizi nello scope Production, non Preview |
 
-I risultati CI del commit pubblicato e lo stato finale della PR vanno registrati nella sezione conclusiva dopo il workflow. Non trasferire automaticamente il PASS delle pipeline precedenti al nuovo SHA.
+CI sul commit `579b2b050cbec51ca20fd034180debc5dfdde065`: [push 40661350454](https://github.com/vicente490x/rush-presale/actions/runs/40661350454) e [PR 40661448184](https://github.com/vicente490x/rush-presale/actions/runs/40661448184), entrambi SUCCESS. [PR #5](https://github.com/vicente490x/rush-presale/pull/5) aperta in bozza; GitHub rileva assenza di conflitti, sei commit avanti e zero indietro rispetto a main a questa revisione. Nessun merge.
+
+Per il collaudo sul dominio TEST esistente viene usato `scripts/deploy-staging-check.ts` prima della build: verifica configurazione staging, chiave TEST, job disattivati, endpoint Neon staging esatto, ruolo runtime `rush_staging_app` e URL canonico. Il target tecnico Vercel si chiama Production ma l'applicazione resta TEST. Il comando non è adatto al futuro deployment LIVE e non cambia i segreti né le impostazioni permanenti del progetto. Una prima richiesta con controllo inline è stata rifiutata dalla validazione Vercel (buildCommand massimo 256 caratteri), prima di creare deployment; il controllo è stato trasferito in questo script versionato. L'audit successivo effettua soltanto letture provider, senza pagamenti o invii email.
 
 ## Controlli PR #4: chiusi e ancora aperti
 
