@@ -1,0 +1,6 @@
+
+> rush-presale@2.2.0 db:validate
+> node --import tsx scripts/prisma-cli.ts validate
+
+Prisma schema loaded from prisma\schema.prisma
+The schema at prisma\schema.prisma is valid 🚀

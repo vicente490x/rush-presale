@@ -13,7 +13,8 @@
 | EmailOutbox | Destinatario, oggetto/testo, dedupeKey, lease, tentativi e providerId | Deduplicazione e acquisizione atomica tra worker |
 | StripeWebhookEvent | Event ID, tipo e data elaborazione | Ledger per idempotenza |
 | WebhookReceipt | Event ID, tipo, data e stato ricezione | Traccia dei tentativi già autenticati |
-| AdminSession | Digest identificativo, attore, scadenza e revoca | Token non salvato in chiaro; revoca controllata dal server |
+| AdminSession | Digest identificativo, attore, impronta credenziale, scadenza e revoca | Token non salvato in chiaro; revoca e account controllati dal server |
+| AdminUser (2.2.0) | ID, email univoca, ruolo ADMIN, passwordHash, active, date | Identità persistente; login e sessioni richiedono account attivo |
 | RateLimitEntry | Chiave, contatore e reset | Budget persistente per login e lookup |
 | AuditLog | Attore, azione, entità, prima/dopo, data | Operazioni amministrative ed economiche |
 | ApplicationError | Codice fisso, contesto ridotto e data | Diagnostica senza errori provider completi |

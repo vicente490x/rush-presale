@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0 — 27 ottobre 2026 — candidato
+
+- Account AdminUser con ruolo ADMIN, hash bcrypt, bootstrap idempotente e controllo account/impronta nelle sessioni revocabili.
+- Migrazione additiva senza modifiche agli ordini; login sul database e compatibilità dei generatori di credenziali.
+- GLB originale nel carosello: caricamento su selezione, controlli 3D, fallback e gesti touch separati.
+- CSP compatibile con WebAssembly e texture blob; corretta l’idratazione della home con movimento ridotto.
+- Test browser desktop/mobile emulato, bootstrap concorrente, account disattivato e verifica ripetibile del rilascio.
+- Dossier italiano DOCX/XLSX con screenshot ed evidenze; verifiche remote esplicitamente aperte. Nessun deploy o merge automatico.
+
 ## 2.1.2 — 26 ottobre 2026
 
 - Verifica TLS client PostgreSQL con certificato e hostname controllati, distinta dal tratto osservato dietro il proxy Neon.

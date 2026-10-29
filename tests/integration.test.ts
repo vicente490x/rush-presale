@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { randomUUID } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import Stripe from 'stripe';
 
 test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { skip: process.env.RUSH_ISOLATED_TEST !== 'true' }, async t => {
@@ -13,7 +14,9 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
   const { deliverPendingEmails } = await import('../lib/mail');
   const { expiryPreview, runExpiry } = await import('../lib/expiry');
   const { initialTerms } = await import('../lib/operational-schema');
-  const { createAdminSession, isAdminSession } = await import('../lib/admin-auth');
+  const { createAdminSession, isAdminSession, adminIdentity, revokeAdminSession } = await import('../lib/admin-auth');
+  const { initializeAdmin, adminId, authenticateAdmin } = await import('../lib/admin-account');
+  await initializeAdmin({ id: adminId(), email: 'admin@example.com', password: 'isolated-integration-admin-password' });
   let calls = 0;
   let refundMode: 'pending' | 'succeeded' | 'failed' | 'timeout' | 'accepted-timeout' = 'pending';
   let refundList: Stripe.Refund[] = [];
@@ -388,6 +391,7 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     const { POST } = await import('../app/api/admin/login/route');
     const previousHash = process.env.ADMIN_PASSWORD_HASH;
     process.env.ADMIN_PASSWORD_HASH = await bcrypt.hash('synthetic-local-password', 12);
+    await prisma.adminUser.update({ where: { id: adminId() }, data: { passwordHash: process.env.ADMIN_PASSWORD_HASH } });
     const request = (password: string) => new Request('http://localhost:3000/api/admin/login', {
       method: 'POST', headers: { origin: 'http://localhost:3000', 'Content-Type': 'application/json' },
       body: JSON.stringify({ password, turnstileToken: 'local-test' })
@@ -405,6 +409,94 @@ test('PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)', { 
     } finally {
       if (previousHash === undefined) delete process.env.ADMIN_PASSWORD_HASH; else process.env.ADMIN_PASSWORD_HASH = previousHash;
     }
+  });
+  await t.test('ADMIN bootstrap is idempotent and concurrent creation never duplicates or overwrites credentials', async () => {
+    const id = 'bootstrap-' + randomUUID();
+    const email = id + '@example.com';
+    const results = await Promise.all(Array.from({ length: 3 }, () => initializeAdmin({ id, email, password: 'isolated-bootstrap-password' })));
+    assert.equal(results.filter(result => result.created).length, 1);
+    const user = await prisma.adminUser.findUniqueOrThrow({ where: { id } });
+    assert.equal(user.role, 'ADMIN'); assert.notEqual(user.passwordHash, 'isolated-bootstrap-password');
+    assert.match(user.passwordHash, /^\$2b\$12\$/);
+    assert.equal((await initializeAdmin({ id, email, password: 'different-password-not-applied' })).created, false);
+    assert.equal((await prisma.adminUser.findUniqueOrThrow({ where: { id } })).passwordHash, user.passwordHash);
+    await assert.rejects(initializeAdmin({ id: 'different-id', email, password: 'isolated-bootstrap-password' }), /CONFLICT/);
+    await assert.rejects(initializeAdmin({ id, email: 'other@example.com' }), /CONFLICT/);
+  });
+  await t.test('ADMIN inactive accounts and changed database credentials invalidate issued sessions', async () => {
+    const token = await createAdminSession();
+    assert.equal(await isAdminSession(token), true);
+    await prisma.adminUser.update({ where: { id: adminId() }, data: { active: false } });
+    assert.equal(await isAdminSession(token), false);
+    assert.equal(await authenticateAdmin('synthetic-local-password'), null);
+    await assert.rejects(createAdminSession(), /NOT_AUTHORIZED/);
+    await prisma.adminUser.update({ where: { id: adminId() }, data: { active: true } });
+    const bcrypt = await import('bcryptjs');
+    await prisma.adminUser.update({ where: { id: adminId() }, data: { passwordHash: await bcrypt.hash('changed-isolated-password', 12) } });
+    assert.equal(await isAdminSession(token), false);
+    assert.equal(await authenticateAdmin('synthetic-local-password'), null);
+    assert.ok(await authenticateAdmin('changed-isolated-password'));
+    assert.equal(await authenticateAdmin('a'.repeat(73)), null);
+  });
+  await t.test('ADMIN initialization command persists once without logging password or hash', async () => {
+    const id = 'cli-' + randomUUID();
+    const password = randomUUID() + randomUUID();
+    const env = { ...process.env, __NEXT_PROCESSED_ENV: 'true', ADMIN_ID: id, ADMIN_EMAIL: id + '@example.com', ADMIN_PASSWORD: password };
+    for (const expected of ['creato nel database', 'già presente']) {
+      const result = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/create-admin.ts'], { env, encoding: 'utf8' });
+      assert.equal(result.status, 0);
+      assert.ok(result.stdout.includes(expected));
+      assert.ok(!(result.stdout + result.stderr).includes(password));
+      assert.ok(!(result.stdout + result.stderr).includes('$2b$'));
+    }
+    assert.equal(await prisma.adminUser.count({ where: { id } }), 1);
+  });
+  await t.test('personal ADMIN authenticates separately, preserves the original account and has independently revocable sessions', async () => {
+    const { personalAdminIdentity } = await import('../scripts/admin-provision-config');
+    const original = await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId() } });
+    const originalToken = await createAdminSession();
+    const identity = personalAdminIdentity('personal-' + randomUUID() + '@example.com');
+    const password = 'personal-isolated-' + randomUUID();
+    assert.equal((await initializeAdmin({ ...identity, password })).created, true);
+    assert.equal((await initializeAdmin({ ...identity, password: 'ignored-second-password' })).created, false);
+    assert.equal((await authenticateAdmin(password, '  ' + identity.email.toUpperCase() + '  '))?.id, identity.id);
+    assert.equal(await authenticateAdmin(password), null);
+    assert.equal(await authenticateAdmin(password, original.email), null);
+    assert.equal(await authenticateAdmin(password, 'unknown@example.com'), null);
+    assert.equal(await authenticateAdmin(password, 'invalid-email'), null);
+    // Start a new local rate-limit window for this independent login scenario.
+    await prisma.rateLimitEntry.updateMany({ where: { key: { startsWith: 'admin-login:' } }, data: { resetAt: new Date(0) } });
+    const { POST: login } = await import('../app/api/admin/login/route');
+    const request = (email: string, value: string) => new Request('http://localhost:3000/api/admin/login', {
+      method: 'POST', headers: { origin: 'http://localhost:3000', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: value, turnstileToken: 'local-test' })
+    });
+    assert.equal((await login(request(identity.email, 'wrong'))).status, 401);
+    const response = await login(request(identity.email, password));
+    assert.equal(response.status, 200);
+    const token = response.headers.get('set-cookie')!.split(';')[0].split('=')[1];
+    assert.equal(await adminIdentity(token), identity.id);
+    const { GET: dashboard } = await import('../app/api/admin/dashboard/route');
+    const { GET: orders } = await import('../app/api/admin/orders/route');
+    const authenticated = (path: string) => new Request('http://localhost:3000' + path, { headers: { cookie: 'rush_admin_session=' + token } });
+    assert.equal((await dashboard(authenticated('/api/admin/dashboard'), undefined)).status, 200);
+    assert.equal((await orders(authenticated('/api/admin/orders'), undefined)).status, 200);
+    await revokeAdminSession(token);
+    assert.equal((await dashboard(authenticated('/api/admin/dashboard'), undefined)).status, 401);
+    assert.equal(await isAdminSession(originalToken), true);
+    const personal = await prisma.adminUser.findUniqueOrThrow({ where: { id: identity.id } });
+    const activeToken = await createAdminSession(personal.passwordHash, identity.id);
+    await prisma.adminUser.update({ where: { id: identity.id }, data: { active: false } });
+    assert.equal(await isAdminSession(activeToken), false);
+    assert.equal((await login(request(identity.email, password))).status, 401);
+    await assert.rejects(createAdminSession(personal.passwordHash, identity.id), /NOT_AUTHORIZED/);
+    await prisma.adminUser.update({ where: { id: identity.id }, data: { active: true } });
+    const bcrypt = await import('bcryptjs');
+    await prisma.adminUser.update({ where: { id: identity.id }, data: { passwordHash: await bcrypt.hash('changed-personal-password', 12) } });
+    assert.equal(await isAdminSession(activeToken), false);
+    await assert.rejects(createAdminSession(personal.passwordHash, identity.id), /NOT_AUTHORIZED/);
+    assert.equal(await isAdminSession(originalToken), true);
+    assert.deepEqual(await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId() } }), original);
   });
   await prisma.$disconnect();
 });

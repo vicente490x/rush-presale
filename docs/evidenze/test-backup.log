@@ -1,0 +1,5 @@
+
+> rush-presale@2.2.0 test:backup
+> node --import tsx scripts/test-backup.ts
+
+{"check":"backup-restore-local","outcome":"PASS","format":"custom","bytes":35423,"dumpMs":616,"restoreMs":470,"preserved":["orders","amounts","dates","terms-relations","outbox","migration-checksums"],"sourceUnaffected":true,"commercialDatabaseTested":false}

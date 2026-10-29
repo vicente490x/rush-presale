@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 
@@ -10,28 +11,37 @@ const images = [
   { src: '/assets/mockup-retro.png', alt: 'Dettaglio ravvicinato della stampa R rossa effetto gelatina sul retro della maglietta RUSH.', detail: true }
 ];
 
+const RushShirt360 = dynamic(() => import('./RushShirt360'), {
+  ssr: false, loading: () => <div>
+    <Image src={images[0].src} alt={images[0].alt} width={960} height={1440} sizes="(max-width: 800px) 100vw, 58vw" />
+    <p className="shirt-viewer-loading" role="status">Caricamento vista 3D…</p>
+  </div>
+});
+
 export function ImageGallery() {
   const dialog = useRef<HTMLDialogElement>(null);
   const reduceMotion = useReducedMotion();
   const [selected, setSelected] = useState(0);
   const [zoomed, setZoomed] = useState(false);
   const [touchStart, setTouchStart] = useState<number>();
+  const is3D = selected === images.length;
   useEffect(() => { if (zoomed) dialog.current?.showModal(); }, [zoomed]);
 
   return (
     <div className="gallery">
       <div
         className="gallery-main"
-        onTouchStart={(event) => setTouchStart(event.touches[0]?.clientX)}
+        onTouchStart={(event) => { setTouchStart(!is3D && event.touches.length === 1 ? event.touches[0]?.clientX : undefined); }}
+        onTouchCancel={() => setTouchStart(undefined)}
         onTouchEnd={(event) => {
-          if (touchStart === undefined) return;
+          if (is3D || touchStart === undefined) return;
           const delta = event.changedTouches[0]?.clientX - touchStart;
           if (delta > 45) setSelected((current) => Math.max(0, current - 1));
-          if (delta < -45) setSelected((current) => Math.min(images.length - 1, current + 1));
+          if (delta < -45) setSelected((current) => Math.min(images.length, current + 1));
           setTouchStart(undefined);
         }}
       >
-        <button
+        {is3D ? <RushShirt360 onPhotos={() => setSelected(0)} /> : <button
           type="button"
           onClick={() => setZoomed(true)}
           aria-label={`Ingrandisci immagine ${selected === 0 ? 'frontale' : selected === 1 ? 'posteriore' : 'dettaglio della stampa'}`}
@@ -55,7 +65,7 @@ export function ImageGallery() {
               sizes="(max-width: 800px) 100vw, 58vw"
             />
           </motion.div>
-        </button>
+        </button>}
       </div>
       <div className="gallery-controls" aria-label="Seleziona immagine">
         {images.map((image, index) => (
@@ -67,9 +77,10 @@ export function ImageGallery() {
             onClick={() => setSelected(index)}
           />
         ))}
+        <button type="button" className="gallery-3d-button" aria-label="Mostra modello 3D" aria-current={is3D} onClick={() => setSelected(images.length)}>3D</button>
       </div>
-      <p className="gallery-caption">{selected === 0 ? 'VISTA FRONTALE' : selected === 1 ? 'VISTA POSTERIORE' : 'DETTAGLIO STAMPA 3D'} · TOCCA PER INGRANDIRE</p>
-      {zoomed && (
+      <p className="gallery-caption">{is3D ? 'VISTA 3D INTERATTIVA' : `${selected === 0 ? 'VISTA FRONTALE' : selected === 1 ? 'VISTA POSTERIORE' : 'DETTAGLIO STAMPA'} · TOCCA PER INGRANDIRE`}</p>
+      {zoomed && !is3D && (
         <dialog
           ref={dialog}
           onCancel={() => setZoomed(false)}

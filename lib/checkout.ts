@@ -59,7 +59,7 @@ export async function createCheckout(input: z.infer<typeof orderInput>, stripe: 
   const session = order.stripeSessionId
     ? await stripe.checkout.sessions.retrieve(order.stripeSessionId)
     : await stripe.checkout.sessions.create({
-      mode: 'payment', customer_email: order.email, payment_method_types: ['card'],
+      mode: 'payment', payment_method_types: ['card'], customer_email: order.email,
       line_items: [{ quantity: order.quantity, price_data: { currency: order.currency, unit_amount: order.unitPriceCents,
         product_data: { name: `RUSH T-SHIRT — PRE-SALE (taglia ${order.size})` } } }],
       metadata: { orderId: order.id, orderNumber: order.orderNumber },
@@ -77,5 +77,5 @@ export async function createCheckout(input: z.infer<typeof orderInput>, stripe: 
     throw new DomainError('PRE-SALE non disponibile. Il checkout è stato annullato.', 403);
   }
   if (session.status !== 'open' || !session.url) throw new DomainError('Checkout concluso o scaduto. Controlla la conferma o avvia un nuovo ordine.');
-  return { checkoutUrl: session.url };
+  return { checkoutUrl: session.url, orderNumber: order.orderNumber };
 }
