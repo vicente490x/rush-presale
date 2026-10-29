@@ -5,7 +5,7 @@ import { stdin, stdout } from 'node:process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-async function readHidden(label: string): Promise<string> {
+export async function readHidden(label: string): Promise<string> {
   if (!stdin.isTTY || typeof stdin.setRawMode !== 'function') {
     throw new Error('Esegui questo comando nel terminale interattivo di VS Code.');
   }

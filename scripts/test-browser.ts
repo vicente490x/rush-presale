@@ -116,6 +116,7 @@ async function main() {
     assert.equal(await page.locator('.qty-control output').textContent(), '2'); pass('Ritorno alle foto conserva taglia, quantità e totale');
     await page.goto(base + '/admin');
     await page.waitForURL('**/admin/login');
+    assert.equal(await page.getByLabel('Email', { exact: true }).getAttribute('autocomplete'), 'username');
     await page.screenshot({ path: '.test-results/browser/admin-login.png', fullPage: true });
     await desktop.addCookies([{ name: 'rush_admin_session', value: await createAdminSession(), url: base, httpOnly: true, sameSite: 'Strict' }]);
     await page.goto(base + '/admin');
@@ -125,6 +126,17 @@ async function main() {
     await page.getByRole('button', { name: /SALVA IMPOSTAZIONI/ }).waitFor();
     await page.screenshot({ path: '.test-results/browser/admin-settings.png', fullPage: true });
     pass('Admin anonimo rediretto; dashboard e impostazioni renderizzate con sessione DB valida');
+    const personalId = 'personal-browser-' + randomBytes(8).toString('hex');
+    await initializeAdmin({ id: personalId, email: personalId + '@example.com', password: randomBytes(32).toString('hex') });
+    const personalContext = await browser.newContext();
+    await personalContext.addCookies([{ name: 'rush_admin_session', value: await createAdminSession(undefined, personalId), url: base, httpOnly: true, sameSite: 'Strict' }]);
+    const personalPage = await personalContext.newPage();
+    await personalPage.goto(base + '/admin');
+    await personalPage.getByRole('region', { name: 'Statistiche PRE-SALE' }).waitFor();
+    await personalPage.getByRole('heading', { name: 'ORDINI', exact: true }).waitFor();
+    assert.equal((await personalPage.request.get(base + '/api/admin/orders')).status(), 200);
+    await personalContext.close();
+    pass('Secondo ADMIN: dashboard e ordini renderizzati con sessione distinta (fixture locale)');
 
     const mobile = await browser.newContext({ ...devices['iPhone 13'], reducedMotion: 'reduce' });
     const phone = await mobile.newPage();

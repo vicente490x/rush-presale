@@ -1,5 +1,9 @@
 # RUSH PRE-SALE — Documentazione di progetto
 
+## Aggiornamento 29 ottobre 2026
+
+[Final QA e gate MAIN](15_FINAL_QA.md) · [amministratore personale e password sicura](14_ADMIN_PERSONALE.md) · [modello 3D Premium](13_MODELLO_3D_PREMIUM.md). Manuale e TAD nei sorgenti Markdown includono il login per email, le sessioni distinte e il GLB Premium. I documenti Office restano evidenze storiche del 27 ottobre: non certificano il candidato attuale. Consultare il report corrente e la PR #5 prima di qualsiasi merge.
+
 ## Aggiornamento 28 ottobre 2026
 
 [Report finale e gate LIVE](11_FINALIZZAZIONE_LIVE.md) · [casi di test aggiornati](12_CASI_TEST_FINALI.md) · [manuale aggiornato](sorgenti/Manuale_Uso_RUSH_Presale.md) · [TAD aggiornato](sorgenti/TAD_Architettura_Tecnica_RUSH_Presale.md). Questi sorgenti Markdown includono la conferma verificata e sostituiscono, per le sezioni interessate, i contenuti degli Office del 27 ottobre. Gli allegati precedenti non sono stati rigenerati e non certificano questa revisione. **Rilascio bloccato** fino alla chiusura dei gate del report.

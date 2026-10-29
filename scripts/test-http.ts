@@ -162,6 +162,17 @@ async function main() {
     assert.equal((await get('/api/admin/export', cookie)).status, 401);
     assert.equal((await get('/admin', cookie)).status, 307);
     check('SEC-02 copied session rejected after logout', () => {});
+    const personalId = 'personal-http-' + randomUUID();
+    const previousAdmin = await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId() } });
+    await initializeAdmin({ id: personalId, email: personalId + '@example.com', password: randomBytes(24).toString('hex') });
+    const personalToken = await createAdminSession(undefined, personalId);
+    const personalCookie = 'rush_admin_session=' + personalToken;
+    assert.equal((await get('/admin', personalCookie)).status, 200);
+    assert.equal((await get('/api/admin/orders', personalCookie)).status, 200);
+    assert.equal((await post('/api/admin/logout', {}, personalCookie)).status, 200);
+    assert.equal((await get('/api/admin/orders', personalCookie)).status, 401);
+    assert.deepEqual(await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId() } }), previousAdmin);
+    check('Personal ADMIN: dashboard/orders allowed, logout revokes access, original account unchanged', () => {});
     const report = { checks, result: 'PASS', scope: 'Production Next server over local HTTP; generated signed Stripe fixtures; no external API calls; no browser rendering', visualBrowser: 'NOT EXECUTED — no connected browser', createdAt: new Date().toISOString() };
     writeFileSync('.test-results/http-report.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report));
   } finally { server.kill(); writeFileSync('.test-results/http-server.log', logs); await prisma.$disconnect(); }

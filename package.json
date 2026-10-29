@@ -19,6 +19,7 @@
     "db:dev": "node --import tsx scripts/prisma-cli.ts migrate dev",
     "db:studio": "node --import tsx scripts/prisma-cli.ts studio",
     "admin:setup": "node --import tsx scripts/setup-local-admin.ts",
+    "admin:provision": "node --import tsx scripts/provision-admin.ts",
     "create-admin": "node --import tsx scripts/create-admin.ts",
     "test:integration": "node --import tsx scripts/test-integration.ts",
     "typecheck": "tsc --noEmit",

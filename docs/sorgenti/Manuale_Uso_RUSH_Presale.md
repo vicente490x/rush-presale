@@ -50,11 +50,13 @@ Ogni ordine memorizza prezzo, condizioni e data di pagamento. La scadenza inizia
 La consegna avviene durante una serata RUSH o tramite PR, secondo le condizioni accettate. La piattaforma non gestisce una spedizione tradizionale. Con PRE-SALE CHIUSA non si possono avviare nuove prenotazioni. Gli ordini precedenti restano gestibili nell'area amministrativa; la consultazione cliente richiede il cookie valido descritto sopra.
 
 ## 6. Accesso amministrativo
-Aprire /admin/login, inserire la password dell’account configurato e completare la verifica anti-bot. Un errore non rivela se l’account esiste. Dopo dieci tentativi nella finestra di 15 minuti il server rifiuta ulteriori accessi da quella sorgente. In locale, fuori dalle build di produzione, il controllo CAPTCHA è escluso soltanto su loopback.
+Aprire /admin/login, inserire email e password del proprio account e completare la verifica anti-bot. L’account principale mantiene anche l’accesso con sola password, lasciando vuota l’email. Un errore non rivela se l’account esiste. Dopo dieci tentativi nella finestra di 15 minuti il server rifiuta ulteriori accessi da quella sorgente. In locale, fuori dalle build di produzione, il controllo CAPTCHA è escluso soltanto su loopback.
 
 ![Pagina di accesso amministrativo](../evidenze/admin-login.png)
 
 La sessione dura al massimo 12 ore. ESCI revoca la sessione nel database e rimuove il cookie. Disattivazione dell’account, modifica dell’hash salvato, rotazione del segreto di sessione o della configurazione legacy invalidano le sessioni interessate. Se il database non risponde, l’accesso viene negato.
+
+Un nuovo amministratore personale deve essere creato da un gestore autorizzato con la [procedura di provisioning](../14_ADMIN_PERSONALE.md). La password si imposta nel terminale locale con input nascosto, mai in chat. La creazione non cambia l’amministratore principale; ogni sessione identifica il proprio account e può essere revocata separatamente. Il provisioning non è una procedura di recupero password.
 
 ## 7. Dashboard, ordini e produzione
 La dashboard presenta pezzi pagati/soglia, percentuale, quantità mancanti, ordini totali e pagati, lordo, rimborsato, netto, produzione, preavvisi, scaduti e consegne. Il netto non sottrae le commissioni Stripe. I rimborsi parziali e quelli ancora in corso sono distinguibili dal rimborso completo.

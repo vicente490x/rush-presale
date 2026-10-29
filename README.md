@@ -63,6 +63,8 @@ npm run create-admin -- --env-file .env.staging.local
 
 Sostituire il file con quello production solo nell’ambiente corretto. La migrazione aggiunge AdminUser e l’impronta credenziale alle sessioni, conservando ordini e dati storici. Le vecchie sessioni richiedono un nuovo login. Il bootstrap **non è un reset password**: cambiare il solo hash nell’ambiente non aggiorna l’account DB. Nessun amministratore commerciale è stato creato nel collaudo locale.
 
+Per aggiungere un amministratore personale distinto, usare [admin:provision con password nascosta e destinazione Neon esplicita](docs/14_ADMIN_PERSONALE.md). Il login accetta email e password; lasciare vuota l’email conserva l’accesso dell’account principale. Le sessioni identificano ciascun amministratore e sono revocabili separatamente. Non cambiare ADMIN_ID o le credenziali del vecchio account per aggiungerne uno nuovo.
+
 ## Build e avvio
 
 ```sh
@@ -112,7 +114,7 @@ La suite browser controlla anche l'hash dell'asset servito, caricamento lento, r
 
 vercel.json pianifica daily alle 07:00 UTC e cleanup alle 07:30 UTC. I job richiedono CRON_SECRET; daily è in anteprima fuori production. Il banner TEST scompare solo con APP_ENV=production e STRIPE_MODE=live: non viene nascosta una modalità ancora in collaudo.
 
-Il candidato non è stato pubblicato né unito a main. Prima del lancio completare [preflight e piano di rilascio](docs/10_PIANO_RILASCIO.md), dati venditore e prove remote. I riscontri storici sul dominio esistente non certificano il nuovo branch.
+Il candidato è pubblicato sul branch `feature/rush-final-release`, PR #5; il merge su main dipende dai gate del [rapporto Final QA](docs/15_FINAL_QA.md). Prima del lancio completare [preflight e piano di rilascio](docs/10_PIANO_RILASCIO.md), dati venditore e prove remote. Una build Vercel READY non certifica checkout, database o recapito email.
 
 ## Struttura e documentazione
 

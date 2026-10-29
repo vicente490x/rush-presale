@@ -10,8 +10,7 @@ function secret() {
   return createHash('sha256').update(value).update('\0').update(process.env.ADMIN_PASSWORD_HASH ?? '').digest();
 }
 const sessionId = (jti: string) => createHash('sha256').update(jti).digest('hex');
-export async function createAdminSession(expectedHash?: string) {
-  const actor = adminId();
+export async function createAdminSession(expectedHash?: string, actor = adminId()) {
   const user = await prisma.adminUser.findUnique({ where: { id: actor } });
   if (!user?.active || user.role !== 'ADMIN' || (expectedHash && user.passwordHash !== expectedHash)) throw new Error('ADMIN_NOT_AUTHORIZED');
   const jti = randomBytes(32).toString('base64url');
@@ -26,7 +25,7 @@ async function verifiedSession(token: string | undefined) {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ['HS256'], issuer: 'rush-admin', audience: 'rush-backoffice', requiredClaims: ['sub', 'jti', 'iat', 'exp'], maxTokenAge: '12h' });
-    if (payload.role !== 'ADMIN' || payload.sub !== adminId() || !payload.jti) return null;
+    if (payload.role !== 'ADMIN' || !payload.sub || payload.sub.length > 100 || !payload.jti) return null;
     return { id: sessionId(payload.jti), actor: payload.sub };
   } catch { return null; }
 }
