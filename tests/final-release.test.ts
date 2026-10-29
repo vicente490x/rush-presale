@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { adminPassword } from '../lib/admin-account';
 import { contentSecurityPolicy } from '../lib/security-headers';
 
@@ -19,6 +20,9 @@ test('ADMIN password policy rejects bcrypt truncation and control characters', (
 
 test('3D GLB is valid v2 and self-contained with embedded textures', () => {
   const glb = readFileSync('public/assets/models/rush-oversized-shirt.glb');
+  // Pin the supplied Web asset: a valid older GLB must not pass this release gate.
+  assert.equal(glb.length, 7465188);
+  assert.equal(createHash('sha256').update(glb).digest('hex'), 'f32fdbc136cc4d1c049e9ec22950e98df3a35043365fcfd350a9fd4dbb8c8aa6');
   assert.equal(glb.toString('ascii', 0, 4), 'glTF');
   assert.equal(glb.readUInt32LE(4), 2);
   assert.equal(glb.readUInt32LE(8), glb.length);

@@ -94,9 +94,13 @@ Per riprendere una verifica interrotta si può usare `npm run verify:release -- 
 
 ## Modello 3D
 
-[RushShirt3D](components/RushShirt3D.tsx) è la quarta voce di [ImageGallery](components/ImageGallery.tsx). Il GLB originale è in public/assets/models/rush-oversized-shirt.glb, con texture incorporate. Libreria e modello sono caricati solo alla selezione. Sono presenti avanzamento, timeout, fallback, fronte/retro, rotazione, pausa/ripresa, reset e zoom limitato. I gesti del modello non cambiano slide.
+[RushShirt360](components/RushShirt360.tsx) è la quarta voce di [ImageGallery](components/ImageGallery.tsx); `RushShirt3D` resta un alias compatibile. Il file `RUSH_Oversized_Tee_Web.glb` del pacchetto `RUSH_Tee_3D_Studio_Premium(2).zip` sostituisce byte per byte il precedente asset in `public/assets/models/rush-oversized-shirt.glb`: 7.465.188 byte, SHA-256 `f32fdbc136cc4d1c049e9ec22950e98df3a35043365fcfd350a9fd4dbb8c8aa6`. L'URL include una versione per evitare copie obsolete in cache.
+
+Libreria e modello sono caricati solo alla selezione. Sono presenti anteprima fotografica, avanzamento, timeout, fallback e riprova, fronte/retro, rotazione, pausa/ripresa, reset e zoom proporzionato al modello. I gesti del modello non cambiano slide; lo scorrimento verticale della pagina resta disponibile. La rotazione rispetta il movimento ridotto e si ferma quando la pagina viene nascosta. Stili e tipi del custom element sono in `RushShirt360.module.css` e `types/model-viewer.d.ts`.
 
 La CSP autorizza WebAssembly del decoder e blob locali delle texture; eval JavaScript resta vietato in produzione. Le fotografie originali sono conservate. Il modello fornito è approssimato e non viene ricostruito.
+
+La suite browser controlla anche l'hash dell'asset servito, caricamento lento, recupero dagli errori e layout da 320 a 1440 px. Vedi il [report dell'integrazione Premium](docs/13_MODELLO_3D_PREMIUM.md); i documenti precedenti descrivono il vecchio modello.
 
 ## Deploy Vercel
 

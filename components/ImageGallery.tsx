@@ -11,8 +11,11 @@ const images = [
   { src: '/assets/mockup-retro.png', alt: 'Dettaglio ravvicinato della stampa R rossa effetto gelatina sul retro della maglietta RUSH.', detail: true }
 ];
 
-const RushShirt3D = dynamic(() => import('./RushShirt3D'), {
-  ssr: false, loading: () => <p className="shirt-viewer-loading" role="status">Caricamento vista 3D…</p>
+const RushShirt360 = dynamic(() => import('./RushShirt360'), {
+  ssr: false, loading: () => <div>
+    <Image src={images[0].src} alt={images[0].alt} width={960} height={1440} sizes="(max-width: 800px) 100vw, 58vw" />
+    <p className="shirt-viewer-loading" role="status">Caricamento vista 3D…</p>
+  </div>
 });
 
 export function ImageGallery() {
@@ -28,7 +31,8 @@ export function ImageGallery() {
     <div className="gallery">
       <div
         className="gallery-main"
-        onTouchStart={(event) => { if (!is3D) setTouchStart(event.touches[0]?.clientX); }}
+        onTouchStart={(event) => { setTouchStart(!is3D && event.touches.length === 1 ? event.touches[0]?.clientX : undefined); }}
+        onTouchCancel={() => setTouchStart(undefined)}
         onTouchEnd={(event) => {
           if (is3D || touchStart === undefined) return;
           const delta = event.changedTouches[0]?.clientX - touchStart;
@@ -37,7 +41,7 @@ export function ImageGallery() {
           setTouchStart(undefined);
         }}
       >
-        {is3D ? <RushShirt3D onPhotos={() => setSelected(0)} /> : <button
+        {is3D ? <RushShirt360 onPhotos={() => setSelected(0)} /> : <button
           type="button"
           onClick={() => setZoomed(true)}
           aria-label={`Ingrandisci immagine ${selected === 0 ? 'frontale' : selected === 1 ? 'posteriore' : 'dettaglio della stampa'}`}

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { chromium, devices, type Browser } from '@playwright/test';
+import { chromium, devices, type Browser, type Route } from '@playwright/test';
 import { checkConfirmation } from './confirmation-browser-checks';
 
 async function main() {
@@ -46,7 +46,7 @@ async function main() {
       if (message.type() === 'error' || message.type() === 'warning') logs += '\nBROWSER: ' + message.text();
     });
     let glbRequests = 0;
-    page.on('request', request => { if (request.url().endsWith('.glb')) glbRequests++; });
+    page.on('request', request => { if (new URL(request.url()).pathname.endsWith('.glb')) glbRequests++; });
     await page.goto(base);
     await page.getByRole('link', { name: 'PRE-SALE', exact: true }).waitFor();
     await page.screenshot({ path: '.test-results/browser/home.png', fullPage: true });
@@ -59,8 +59,23 @@ async function main() {
     assert.equal(await page.getByRole('dialog').isVisible(), true);
     await page.keyboard.press('Escape');
     assert.equal(await page.getByRole('dialog').count(), 0); pass('Foto originali e zoom con chiusura da tastiera');
+    const modelResponse = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('.glb'));
+    let resolveModel!: (route: Route) => void;
+    const pendingModel = new Promise<Route>(resolve => { resolveModel = resolve; });
+    await page.route(/\.glb(?:\?|$)/, route => resolveModel(route), { times: 1 });
     await page.getByRole('button', { name: 'Mostra modello 3D' }).click();
+    const pendingRoute = await pendingModel;
+    await page.getByText(/Caricamento 3D…/).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'FRONTE', exact: true }).isDisabled(), true);
+    assert.equal(await page.getByAltText('Anteprima fotografica della maglietta RUSH').isVisible(), true);
+    await page.screenshot({ path: '.test-results/browser/viewer-loading.png' });
+    await pendingRoute.continue();
+    pass('Rete lenta: anteprima visibile, avanzamento e controlli disabilitati durante il caricamento');
     await page.waitForFunction(() => (document.querySelector('model-viewer') as HTMLElement & { loaded: boolean })?.loaded, undefined, { timeout: 45000 });
+    const response = await modelResponse;
+    assert.equal(response.status(), 200);
+    assert.match(response.headers()['content-type'], /model\/gltf-binary/);
+    assert.equal(createHash('sha256').update(await response.body()).digest('hex'), 'f32fdbc136cc4d1c049e9ec22950e98df3a35043365fcfd350a9fd4dbb8c8aa6');
     assert.equal(glbRequests, 1); pass('GLB reale caricato con CSP di produzione');
     await page.getByRole('button', { name: 'RETRO', exact: true }).click();
     assert.match(await page.locator('model-viewer').evaluate(element => (element as HTMLElement & { cameraOrbit: string }).cameraOrbit), /^180deg/);
@@ -71,19 +86,25 @@ async function main() {
     await page.getByRole('button', { name: 'FERMA ROTAZIONE' }).click();
     await page.getByRole('button', { name: 'RIPRISTINA' }).click();
     assert.match(await page.locator('model-viewer').evaluate(element => (element as HTMLElement & { cameraOrbit: string }).cameraOrbit), /^0deg/);
+    const homeRadius = await page.locator('model-viewer').evaluate(element => (element as HTMLElement & { getCameraOrbit: () => { radius: number } }).getCameraOrbit().radius);
     const box = (await page.locator('model-viewer').boundingBox())!;
     const before = await page.locator('model-viewer').evaluate(element => (element as HTMLElement & { getCameraOrbit: () => { theta: number } }).getCameraOrbit().theta);
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down(); await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 12 }); await page.mouse.up();
     await page.waitForFunction(previous => (document.querySelector('model-viewer') as HTMLElement & { getCameraOrbit: () => { theta: number } }).getCameraOrbit().theta !== previous, before);
     await page.mouse.wheel(0, -10000);
-    await page.waitForFunction(() => {
+    await page.waitForFunction(home => {
       const radius = (document.querySelector('model-viewer') as HTMLElement & { getCameraOrbit: () => { radius: number } }).getCameraOrbit().radius;
-      return radius >= 1.99 && radius <= 12.01;
-    });
+      return radius > 0 && radius < home * 0.9;
+    }, homeRadius);
+    await page.mouse.wheel(0, 10000);
+    await page.waitForFunction(home => {
+      const radius = (document.querySelector('model-viewer') as HTMLElement & { getCameraOrbit: () => { radius: number } }).getCameraOrbit().radius;
+      return radius > home && radius < home * 2;
+    }, homeRadius);
     pass('Fronte/retro, rotazione, ripristino, drag e zoom limitato');
     await page.getByRole('button', { name: 'RIPRISTINA' }).click();
-    await page.waitForFunction(() => (document.querySelector('model-viewer') as HTMLElement & { getCameraOrbit: () => { radius: number } }).getCameraOrbit().radius > 3);
+    await page.waitForFunction(home => Math.abs((document.querySelector('model-viewer') as HTMLElement & { getCameraOrbit: () => { radius: number } }).getCameraOrbit().radius - home) < 0.01, homeRadius);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await page.screenshot({ path: '.test-results/browser/viewer-desktop.png', fullPage: true });
     await page.getByRole('button', { name: 'L', exact: true }).click();
@@ -123,16 +144,45 @@ async function main() {
     await phone.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await phone.screenshot({ path: '.test-results/browser/viewer-mobile.png' });
     pass('Mobile 390px: touch non cambia slide, nessun overflow, reduced motion rispettato');
+    for (const width of [320, 768]) {
+      await phone.setViewportSize({ width, height: 900 });
+      assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+      for (const button of await phone.getByRole('group', { name: 'Controlli modello 3D' }).getByRole('button').all()) {
+        const bounds = (await button.boundingBox())!;
+        assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.height >= 44);
+      }
+    }
+    await phone.setViewportSize({ width: 390, height: 844 });
+    pass('Responsive 320/768px: nessun overflow e controlli touch di almeno 44px');
     await phone.getByRole('button', { name: 'Mostra vista frontale', exact: true }).click();
-    await phone.route('**/*.glb', route => route.abort());
+    await phone.route(/\.glb(?:\?|$)/, route => route.abort());
     // Clear model-viewer's in-memory cache with a fresh document.
     await phone.reload();
     await phone.getByRole('button', { name: 'Mostra modello 3D' }).click();
     await phone.getByRole('button', { name: 'TORNA ALLE FOTO' }).waitFor({ timeout: 50000 });
     await phone.screenshot({ path: '.test-results/browser/viewer-fallback.png' });
+    await phone.unroute(/\.glb(?:\?|$)/);
+    await phone.getByRole('button', { name: 'RIPROVA VISTA 3D' }).click();
+    await phone.waitForFunction(() => (document.querySelector('model-viewer') as HTMLElement & { loaded: boolean })?.loaded);
+    pass('Riprova recupera il GLB dopo un errore di rete');
+    await phone.route(/\.glb(?:\?|$)/, route => route.abort());
+    await phone.reload();
+    await phone.getByRole('button', { name: 'Mostra modello 3D' }).click();
+    await phone.getByRole('button', { name: 'TORNA ALLE FOTO' }).waitFor({ timeout: 50000 });
     await phone.getByRole('button', { name: 'TORNA ALLE FOTO' }).click();
     assert.equal(await phone.getByRole('button', { name: 'Ingrandisci immagine frontale' }).isVisible(), true);
     pass('Errore rete GLB: fallback fotografico e recupero senza ricaricare');
+    const motion = await browser.newContext({ reducedMotion: 'no-preference' });
+    const spinning = await motion.newPage();
+    await spinning.goto(base + '/presale');
+    await spinning.getByRole('button', { name: 'Mostra modello 3D' }).click();
+    await spinning.getByRole('button', { name: 'FERMA ROTAZIONE' }).waitFor();
+    assert.equal(await spinning.locator('model-viewer').evaluate(element => (element as HTMLElement & { autoRotate: boolean }).autoRotate), true);
+    await spinning.emulateMedia({ reducedMotion: 'reduce' });
+    await spinning.getByRole('button', { name: 'AVVIA ROTAZIONE' }).waitFor();
+    assert.equal(await spinning.locator('model-viewer').evaluate(element => (element as HTMLElement & { autoRotate: boolean }).autoRotate), false);
+    await motion.close();
+    pass('Rotazione automatica attiva e arresto al cambio della preferenza movimento ridotto');
     assert.deepEqual(errors, []); pass('Nessun errore JavaScript, texture o CSP nel percorso desktop');
     for (const result of await checkConfirmation(browser, base)) pass(result);
     const noWebgl = await chromium.launch({ executablePath: process.env.RUSH_BROWSER_EXECUTABLE || undefined, args: ['--disable-webgl'] });
