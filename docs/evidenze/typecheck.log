@@ -1,0 +1,4 @@
+
+> rush-presale@2.2.0 typecheck
+> tsc --noEmit
+

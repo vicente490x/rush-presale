@@ -1,0 +1,19 @@
+
+> rush-presale@2.2.0 postinstall
+> prisma generate
+
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.12.0) to .\node_modules\@prisma\client in 387ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+
+added 228 packages, and audited 229 packages in 2m
+
+51 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities

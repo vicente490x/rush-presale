@@ -33,6 +33,8 @@ async function main() {
   const { reserveOrder } = await import('../lib/checkout');
   const { initialTerms } = await import('../lib/operational-schema');
   const { createAdminSession, isAdminSession } = await import('../lib/admin-auth');
+  const { initializeAdmin, adminId } = await import('../lib/admin-account');
+  await initializeAdmin({ id: adminId(), email: 'admin@example.com', passwordHash: env.ADMIN_PASSWORD_HASH });
   mkdirSync('.test-results', { recursive: true });
   const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', '3100'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   let logs = '';
@@ -81,7 +83,8 @@ async function main() {
       const csp = home.headers.get('content-security-policy') ?? '';
       const nonce = csp.match(/'nonce-([^']+)'/)?.[1]; assert.ok(nonce);
       const scriptPolicy = csp.split(';').find(value => value.trim().startsWith('script-src '))!;
-      assert.ok(!scriptPolicy.includes('unsafe-inline')); assert.ok(!scriptPolicy.includes('unsafe-eval'));
+      assert.ok(!scriptPolicy.includes("'unsafe-inline'")); assert.ok(!scriptPolicy.includes("'unsafe-eval'"));
+      assert.ok(scriptPolicy.includes("'wasm-unsafe-eval'"));
       for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
         if (match[2].trim()) assert.ok(match[1].includes(`nonce="${nonce}"`), 'inline script must have matching nonce');
       }
@@ -124,7 +127,17 @@ async function main() {
     const dashboard = await (await get('/api/admin/dashboard', cookie)).json(); check('dashboard counts and gross/refunded/net totals', () => { assert.equal(dashboard.total, 2); assert.equal(dashboard.paidOrders, 1); assert.equal(dashboard.grossCents, 5000); assert.equal(dashboard.refundedCents, 0); assert.equal(dashboard.revenueCents, 5000); assert.equal(dashboard.bySize.M, 2); });
     const delivery = await post('/api/admin/orders/' + order.id + '/delivery', { status: 'CONSEGNATA' }, cookie); check('delivery update persisted and audited', () => assert.equal(delivery.status, 200));
     assert.equal((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).deliveryStatus, 'CONSEGNATA');
-    const lookup = await (await get('/api/orders/' + order.orderNumber, gate)).json(); check('confirmation contains state and no customer PII', () => { assert.equal(lookup.paymentStatus, 'PAID'); assert.equal(lookup.email, undefined); });
+    const lookup = await get('/api/orders/' + order.orderNumber, gate);
+    check('confirmation denies order-number-only access', () => assert.equal(lookup.status, 403));
+    const { issueOrderAccess, orderAccessCookie } = await import('../lib/order-access');
+    const orderCookie = orderAccessCookie(order.orderNumber) + '=' + issueOrderAccess(order.orderNumber);
+    // A missing association must fail before any external provider request.
+    const savedSession = (await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).stripeSessionId;
+    await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: null } });
+    const unavailable = await get('/api/orders/' + order.orderNumber, orderCookie);
+    check('confirmation fails closed without a stored Stripe session', () => assert.equal(unavailable.status, 503));
+    assert.equal((await unavailable.json()).paymentStatus, undefined);
+    await prisma.order.update({ where: { id: order.id }, data: { stripeSessionId: savedSession } });
     const csv = await (await get('/api/admin/export?format=csv', cookie)).text(); check('CSV endpoint escapes formulas and quotes', () => assert.ok(csv.includes('"\'=HYPERLINK(""evil"")"')));
     const xlsxResponse = await get('/api/admin/export?format=xlsx', cookie); const zip = unzipSync(new Uint8Array(await xlsxResponse.arrayBuffer()));
     check('XLSX endpoint has safe cells and manufacturer summary', () => { assert.equal(xlsxResponse.status, 200); assert.ok(strFromU8(zip['xl/workbook.xml']).includes('Produttore')); assert.ok(!strFromU8(zip['xl/worksheets/sheet1.xml']).includes('<f>')); });
@@ -149,6 +162,17 @@ async function main() {
     assert.equal((await get('/api/admin/export', cookie)).status, 401);
     assert.equal((await get('/admin', cookie)).status, 307);
     check('SEC-02 copied session rejected after logout', () => {});
+    const personalId = 'personal-http-' + randomUUID();
+    const previousAdmin = await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId() } });
+    await initializeAdmin({ id: personalId, email: personalId + '@example.com', password: randomBytes(24).toString('hex') });
+    const personalToken = await createAdminSession(undefined, personalId);
+    const personalCookie = 'rush_admin_session=' + personalToken;
+    assert.equal((await get('/admin', personalCookie)).status, 200);
+    assert.equal((await get('/api/admin/orders', personalCookie)).status, 200);
+    assert.equal((await post('/api/admin/logout', {}, personalCookie)).status, 200);
+    assert.equal((await get('/api/admin/orders', personalCookie)).status, 401);
+    assert.deepEqual(await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId() } }), previousAdmin);
+    check('Personal ADMIN: dashboard/orders allowed, logout revokes access, original account unchanged', () => {});
     const report = { checks, result: 'PASS', scope: 'Production Next server over local HTTP; generated signed Stripe fixtures; no external API calls; no browser rendering', visualBrowser: 'NOT EXECUTED — no connected browser', createdAt: new Date().toISOString() };
     writeFileSync('.test-results/http-report.json', JSON.stringify(report, null, 2)); console.log(JSON.stringify(report));
   } finally { server.kill(); writeFileSync('.test-results/http-server.log', logs); await prisma.$disconnect(); }

@@ -1,0 +1,81 @@
+
+> rush-presale@2.2.0 test:integration
+> node --import tsx scripts/test-integration.ts
+
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "rush_audit_final", schema "audit_b53e8f2d4aadee3e" at "127.0.0.1:55432"
+
+4 migrations found in prisma/migrations
+
+Applying migration `20261013000100_initial`
+Applying migration `20261016000100_staging_hardening`
+Applying migration `20261016000200_security_sessions`
+Applying migration `20261027000100_admin_users`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261013000100_initial/
+    └─ migration.sql
+  └─ 20261016000100_staging_hardening/
+    └─ migration.sql
+  └─ 20261016000200_security_sessions/
+    └─ migration.sql
+  └─ 20261027000100_admin_users/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+▶ PostgreSQL integration (real DB, explicit Stripe/Resend test doubles)
+  ✔ 1 paid quantity excludes pending, failed and fully refunded (661.9297ms)
+  ✔ 2 threshold reached does not close sale; 3 orders over threshold (1686.3347ms)
+  ✔ 4 admin threshold and 5 price snapshots (612.4753ms)
+  ✔ 6 concurrent checkout stock reservation and repeat idempotency (554.7106ms)
+  ✔ 7 duplicate webhooks, concurrent delivery and one email (536.3181ms)
+  ✔ 8 out-of-order expired then async success then failure stays paid (938.6825ms)
+STRIPE_WEBHOOK_REJECTED
+  ✔ 9 invalid Stripe signature rejected by actual route (1284.8297ms)
+  ✔ 10 closed presale and 11 maintenance reject checkout (262.1944ms)
+  ✔ 13 expiry warning queued atomically once and dry-run has no refund effects (1383.8645ms)
+  ✔ 14 no automatic refund after production; monotonic timestamp (595.3907ms)
+  ✔ 15 refund pending then succeeded, idempotent concurrent retries (181.5297ms)
+REFUND_RECONCILIATION_REQUIRED
+  ✔ 16 timeout retains pending and retries safely; blocks production while ambiguous (157.2322ms)
+  ✔ 17 manual refund does not require expiry (100.5295ms)
+  ✔ 19 unauthorized admin handler and CSRF checks (32.1441ms)
+  ✔ 21 quantity/customer limit and 22 validation size/email/checkbox (96.3414ms)
+  ✔ 24 email lease concurrent workers sends once (56.2516ms)
+  ✔ 25 changed terms/duration affect only new orders and stale acceptance rejected (102.8122ms)
+  ✔ two distinct simultaneous checkout sessions persist independent orders (35.0578ms)
+  ✔ unpaid completed session never confirms; mismatched amount rolls back event (50.5163ms)
+  ✔ partial external refund does not remove whole quantity; stale events cannot undo full refund (125.7298ms)
+  ✔ terminal failed refund can be manually retried with a new persisted key and history (121.03ms)
+  ✔ production/refund race is serialized; DB rejects timestamp rollback (129.0454ms)
+  ✔ each admin handler independently rejects an unsigned request (95.8481ms)
+  ✔ refund below threshold restores collection before production; reaching again preserves notice dedupe (133.1986ms)
+  ✔ SEC-02 logout revokes copied tokens, sessions are unique and password rotation invalidates them (17.3449ms)
+  ✔ SEC-03 mismatched, duplicate and excessive refund results roll back financial state (91.6006ms)
+  ✔ SEC-03 refund-before-payment is retriable and metadata cannot rebind an unrelated payment (91.4026ms)
+  ✔ SEC-06 rate limit increments atomically and rejects attempts beyond the budget (163.4915ms)
+  ✔ two distinct paid events concurrently confirm exactly two orders and emails (517.546ms)
+REFUND_RECONCILIATION_REQUIRED
+  ✔ accepted refund followed by network timeout reconciles without a second create (965.7271ms)
+  ✔ delivery rejects an order made ineligible by an overlapping refund transaction (500.7094ms)
+  ✔ LIVE processor accepts only coherent events after full production configuration (264.6365ms)
+  ✔ SPEC-08 expired order is refunded by the scheduled workflow and both parties are notified once (136.0307ms)
+  ✔ SPEC-08 an order cannot be refunded automatically before its individual deadline (38.5015ms)
+  ✔ SPEC-05 closing cancels open checkout and preserves the order record (49.8416ms)
+  ✔ excluded historical batches are absent from paid counters and administrative lists (38.1466ms)
+  ✔ real bcrypt admin login rejects wrong credentials and persists revocable session (3056.4379ms)
+  ✔ ADMIN bootstrap is idempotent and concurrent creation never duplicates or overwrites credentials (1224.7437ms)
+  ✔ ADMIN inactive accounts and changed database credentials invalidate issued sessions (806.3337ms)
+  ✔ ADMIN initialization command persists once without logging password or hash (1309.3348ms)
+✔ PostgreSQL integration (real DB, explicit Stripe/Resend test doubles) (25090.1125ms)
+ℹ tests 41
+ℹ suites 0
+ℹ pass 41
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25551.6654
+Schema di test isolato conservato nel solo DB temporaneo per ispezione; nessun dato esistente modificato.

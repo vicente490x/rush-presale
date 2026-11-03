@@ -1,0 +1,43 @@
+{
+  "validation": "ZIP, XML, riapertura DOCX/XLSX, struttura e formule; rendering Microsoft Office non eseguito.",
+  "date": "27/10/2026",
+  "cases": 138,
+  "statuses": {
+    "PASS": 127,
+    "FAIL": 0,
+    "BLOCKED": 8,
+    "NOT RUN": 3
+  },
+  "files": [
+    {
+      "path": "BUR_RUSH_Presale.docx",
+      "bytes": 40807,
+      "sha256": "237ba639a00ba0c6d27cdd38cbe4afbb763dcce6e68e124369861c70bceda499"
+    },
+    {
+      "path": "FUD_RUSH_Presale.docx",
+      "bytes": 184460,
+      "sha256": "dd18f5ea3dffd708c5bf90add8f7502c191cac1f109ebcc635be5a01331bd60f"
+    },
+    {
+      "path": "Manuale_Uso_RUSH_Presale.docx",
+      "bytes": 4156729,
+      "sha256": "54a56ad1c6dc1f6712a3a00d735a0e9b99c0588b7f11c7ed0ad3b763e15a8056"
+    },
+    {
+      "path": "Rapporto_Collaudo_RUSH_Presale.docx",
+      "bytes": 40144,
+      "sha256": "b4812be1980a9a83a08cca20fe61962a4333db9a9b963cd79af613e5c4660251"
+    },
+    {
+      "path": "TAD_Architettura_Tecnica_RUSH_Presale.docx",
+      "bytes": 179488,
+      "sha256": "fd2f5145f8c400c9cff5367d997646a7abb076aa76b65a7a96c4e1052554c61c"
+    },
+    {
+      "path": "Casi_di_Test_RUSH_Presale.xlsx",
+      "bytes": 23710,
+      "sha256": "3c13d6e8367b68a52ba1033142a7a32f3ffc8b6611a64eebc5620bb41c9260cc"
+    }
+  ]
+}

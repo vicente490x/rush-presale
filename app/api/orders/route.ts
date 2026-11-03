@@ -5,6 +5,8 @@ import { assertSameOrigin, readJson } from '@/lib/http';
 import { clientIp, enforceRateLimit } from '@/lib/ratelimit';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { DomainError, logError } from '@/lib/errors';
+import { issueOrderAccess, orderAccessCookie, orderAccessMaxAge } from '@/lib/order-access';
+import { secureCookies } from '@/lib/config';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 export async function POST(request: Request) {
@@ -16,7 +18,12 @@ export async function POST(request: Request) {
     const parsed = orderInput.safeParse(await readJson(request));
     if (!parsed.success) throw new DomainError('Verifica nome, cognome, email, taglia, quantità e accettazione delle condizioni.', 400);
     if (!await verifyTurnstile(parsed.data.turnstileToken, ip)) throw new DomainError('Completa la verifica anti-bot.', 400);
-    return NextResponse.json(await createCheckout(parsed.data), { status: 201, headers: { 'Cache-Control': 'no-store' } });
+    const checkout = await createCheckout(parsed.data);
+    const response = NextResponse.json({ checkoutUrl: checkout.checkoutUrl }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+    response.cookies.set(orderAccessCookie(checkout.orderNumber), issueOrderAccess(checkout.orderNumber), {
+      httpOnly: true, secure: secureCookies(), sameSite: 'lax', path: '/api/orders', maxAge: orderAccessMaxAge
+    });
+    return response;
   } catch (error) {
     if (error instanceof DomainError) return NextResponse.json({ error: error.message }, { status: error.status });
     await logError('CHECKOUT_UNAVAILABLE');

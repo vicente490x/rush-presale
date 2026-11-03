@@ -1,0 +1,39 @@
+
+> rush-presale@2.2.0 test:migration
+> node --import tsx scripts/test-migration.ts
+
+Prisma schema loaded from ..\..\..\AppData\Local\Temp\rush-migration-test-vewY9o\schema.prisma
+Datasource "db": PostgreSQL database "rush_audit_final", schema "migration_e7dad1295f07b13e" at "127.0.0.1:55432"
+
+1 migration found in prisma/migrations
+
+Applying migration `20261013000100_initial`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261013000100_initial/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "rush_audit_final", schema "migration_e7dad1295f07b13e" at "127.0.0.1:55432"
+
+4 migrations found in prisma/migrations
+
+Applying migration `20261016000100_staging_hardening`
+Applying migration `20261016000200_security_sessions`
+Applying migration `20261027000100_admin_users`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20261016000100_staging_hardening/
+    └─ migration.sql
+  └─ 20261016000200_security_sessions/
+    └─ migration.sql
+  └─ 20261027000100_admin_users/
+    └─ migration.sql
+      
+All migrations have been successfully applied.
+PASS upgrade iniziale → staging: ordini, importi e date preservati; backfill prudenziale; termini storici non inventati; produzione irreversibile.

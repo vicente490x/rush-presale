@@ -20,7 +20,7 @@ export function HomeHero() {
       </div>
       <div className="hero-vignette" />
       <div className="ember-field" aria-hidden="true">
-        {!reduceMotion && embers.map((ember, index) => (
+        {embers.map((ember, index) => (
           <i key={index} style={{
             left: ember.left,
             '--duration': ember.duration,

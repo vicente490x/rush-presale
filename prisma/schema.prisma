@@ -241,9 +241,24 @@ model ApplicationError {
 model AdminSession {
   id        String    @id
   actor     String
+  credentialHash String?
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([expiresAt])
+}
+
+enum AdminRole {
+  ADMIN
+}
+
+model AdminUser {
+  id           String    @id
+  email        String    @unique
+  role         AdminRole @default(ADMIN)
+  passwordHash String
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

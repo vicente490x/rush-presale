@@ -15,14 +15,16 @@ export function AdminLogin({ localDevelopment = false }: { localDevelopment?: bo
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const password = new FormData(event.currentTarget).get('password');
+    const data = new FormData(event.currentTarget);
+    const password = data.get('password');
+    const email = String(data.get('email') ?? '').trim();
     setBusy(true);
     setError('');
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, turnstileToken: localDevelopment ? 'local-development' : token })
+        body: JSON.stringify({ ...(email ? { email } : {}), password, turnstileToken: localDevelopment ? 'local-development' : token })
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? 'Accesso non riuscito.');
@@ -45,6 +47,9 @@ export function AdminLogin({ localDevelopment = false }: { localDevelopment?: bo
       <h1>ADMIN</h1>
       <noscript><p className="error-box">JavaScript è necessario per accedere. Abilitalo prima di inserire la password.</p></noscript>
       <form method="post" action="/api/admin/login" onSubmit={submit} className="order-form">
+        <label className="field-label" htmlFor="admin-email">Email</label>
+        <input className="form-control" id="admin-email" name="email" type="email" autoComplete="username" maxLength={254} aria-describedby="admin-email-hint" />
+        <p id="admin-email-hint" className="fine-print">Inserisci l’email del tuo account. Per l’account principale puoi continuare a usare solo la password.</p>
         <label className="field-label" htmlFor="admin-password">Password</label>
         <input className="form-control" id="admin-password" name="password" type="password" autoComplete="current-password" required />
         {localDevelopment

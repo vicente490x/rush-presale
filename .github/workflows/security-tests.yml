@@ -1,7 +1,7 @@
 name: Security and release checks
 on:
   push:
-    branches: [staging, main, release/go-live]
+    branches: [staging, main, release/go-live, feature/rush-final-release]
   pull_request:
 permissions:
   contents: read
@@ -51,3 +51,5 @@ jobs:
         env:
           PG_BIN_DIR: /usr/lib/postgresql/16/bin
       - run: npm run test:http
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

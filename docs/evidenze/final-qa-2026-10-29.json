@@ -1,0 +1,153 @@
+{
+    "date":  "2026-10-29T18:31:33.179Z",
+    "node":  "v24.21.0",
+    "platform":  "win32",
+    "results":  [
+                    {
+                        "name":  "install",
+                        "command":  "npm ci",
+                        "startedAt":  "2026-10-29T18:27:52.611Z",
+                        "finishedAt":  "2026-10-29T18:28:37.622Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/install.log",
+                        "sha256":  "2b81506bd083ce987df6d2e2ba190208efcd3a5496326868c5229d9166889db0"
+                    },
+                    {
+                        "name":  "audit",
+                        "command":  "npm audit --audit-level=high",
+                        "startedAt":  "2026-10-29T18:28:37.623Z",
+                        "finishedAt":  "2026-10-29T18:28:38.550Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/audit.log",
+                        "sha256":  "6d8c5c8f3d7684adb070417bd608d01ae90aa3dc26a65af03ffda4955f38d9a3"
+                    },
+                    {
+                        "name":  "lint",
+                        "command":  "npm run lint",
+                        "startedAt":  "2026-10-29T18:28:38.550Z",
+                        "finishedAt":  "2026-10-29T18:28:42.047Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/lint.log",
+                        "sha256":  "f474c0fbe4b290d662fd99a8ebf7be8bcb15278ada44daa6d3e56995b18a4869"
+                    },
+                    {
+                        "name":  "typecheck",
+                        "command":  "npm run typecheck",
+                        "startedAt":  "2026-10-29T18:28:42.048Z",
+                        "finishedAt":  "2026-10-29T18:28:44.948Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/typecheck.log",
+                        "sha256":  "02333031eda4cd1d5ac515dfc5b7bb8feb96d2625e9dc7591cd8885b9a5aeb09"
+                    },
+                    {
+                        "name":  "test",
+                        "command":  "npm run test",
+                        "startedAt":  "2026-10-29T18:28:44.949Z",
+                        "finishedAt":  "2026-10-29T18:28:46.949Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/test.log",
+                        "sha256":  "8c3e2a30d334f85fc1ad3f544d08005651656ac45a40ab5750a7ddab51fc3066"
+                    },
+                    {
+                        "name":  "db-validate",
+                        "command":  "npm run db:validate",
+                        "startedAt":  "2026-10-29T18:28:46.950Z",
+                        "finishedAt":  "2026-10-29T18:28:48.083Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/db-validate.log",
+                        "sha256":  "0d94193802ba69811ee0dcf0e78d0dbcc5a60c5e17f22241aebfa18dc8132364"
+                    },
+                    {
+                        "name":  "build",
+                        "command":  "npm run build",
+                        "startedAt":  "2026-10-29T18:28:48.083Z",
+                        "finishedAt":  "2026-10-29T18:28:57.591Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/build.log",
+                        "sha256":  "84380eb0f733bba61c6ce4d7558d7a1adf6edd5b573584b0635721f3114f3da2"
+                    },
+                    {
+                        "name":  "test-integration",
+                        "command":  "npm run test:integration",
+                        "startedAt":  "2026-10-29T18:28:57.592Z",
+                        "finishedAt":  "2026-10-29T18:29:11.670Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/test-integration.log",
+                        "sha256":  "b018b6518b6e960b2671979ee7529ae26324933ef8c9680ff597466810fe4784"
+                    },
+                    {
+                        "name":  "test-migration",
+                        "command":  "npm run test:migration",
+                        "startedAt":  "2026-10-29T18:29:11.671Z",
+                        "finishedAt":  "2026-10-29T18:29:13.947Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/test-migration.log",
+                        "sha256":  "419f349474636a68bfcf4fa5ad95d0737a16ba9c9b8d161d46ef5298a26cef7b"
+                    },
+                    {
+                        "name":  "test-backup",
+                        "command":  "npm run test:backup",
+                        "startedAt":  "2026-10-29T18:29:13.948Z",
+                        "finishedAt":  "2026-10-29T18:29:18.295Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/test-backup.log",
+                        "sha256":  "75bbc127666c7ffb03238a6d165a9d5aa27fe267bf40599f87847eabee6a7ee5"
+                    },
+                    {
+                        "name":  "test-http",
+                        "command":  "npm run test:http",
+                        "startedAt":  "2026-10-29T18:29:18.296Z",
+                        "finishedAt":  "2026-10-29T18:29:23.907Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/test-http.log",
+                        "sha256":  "cd127195a09be2f9139e26d6ae0bfe8dd611bb003961e6060d5604de1e1fd964"
+                    },
+                    {
+                        "name":  "test-browser",
+                        "command":  "npm run test:browser",
+                        "startedAt":  "2026-10-29T18:30:45.106Z",
+                        "finishedAt":  "2026-10-29T18:31:33.179Z",
+                        "exitCode":  0,
+                        "result":  "PASS",
+                        "log":  ".test-results/release/test-browser.log",
+                        "sha256":  "c3366d721c2774b05227b07bc3ccc52695dfdc9a09b314802f68fa0577eb0f64"
+                    }
+                ],
+    "browser":  {
+                    "date":  "2026-10-29T18:31:33.080Z",
+                    "result":  "PASS",
+                    "checks":  [
+                                   "3D non scaricato prima della selezione",
+                                   "Foto originali e zoom con chiusura da tastiera",
+                                   "Rete lenta: anteprima visibile, avanzamento e controlli disabilitati durante il caricamento",
+                                   "GLB reale caricato con CSP di produzione",
+                                   "Fronte/retro, rotazione, ripristino, drag e zoom limitato",
+                                   "Ritorno alle foto conserva taglia, quantità e totale",
+                                   "Admin anonimo rediretto; dashboard e impostazioni renderizzate con sessione DB valida",
+                                   "Secondo ADMIN: dashboard e ordini renderizzati con sessione distinta (fixture locale)",
+                                   "Mobile 390px: touch non cambia slide, nessun overflow, reduced motion rispettato",
+                                   "Responsive 320/768px: nessun overflow e controlli touch di almeno 44px",
+                                   "Riprova recupera il GLB dopo un errore di rete",
+                                   "Errore rete GLB: fallback fotografico e recupero senza ricaricare",
+                                   "Rotazione automatica attiva e arresto al cambio della preferenza movimento ridotto",
+                                   "Nessun errore JavaScript, texture o CSP nel percorso desktop",
+                                   "Conferma 1440px (API simulata): dettagli, wallet, reload, attesa→pagato, fallimento, 403/503, riprova e home",
+                                   "Conferma 390px (API simulata): dettagli, wallet, reload, attesa→pagato, fallimento, 403/503, riprova e home",
+                                   "WebGL disabilitato: fallback fotografico disponibile"
+                               ],
+                    "scope":  "Chromium desktop e mobile emulato; Next compilato e PostgreSQL isolato reali; nessun pagamento o invio email esterno.",
+                    "browser":  "156.0.8078.4"
+                },
+    "scope":  "Working tree after 88c076c; PostgreSQL locale isolato; Stripe/Resend simulati; nessuna verifica remota implicita."
+}

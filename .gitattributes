@@ -1,0 +1,5 @@
+# Evidence hashes cover the original bytes, including their line endings.
+docs/evidenze/*.log -text -whitespace
+*.glb binary
+*.docx binary
+*.xlsx binary

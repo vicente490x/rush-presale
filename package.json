@@ -1,11 +1,13 @@
 {
   "name": "rush-presale",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "private": true,
   "engines": {
     "node": ">=22 <25"
   },
   "scripts": {
+    "test:browser": "node --import tsx scripts/test-browser.ts",
+    "verify:release": "node scripts/verify-release.mjs",
     "postinstall": "prisma generate",
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -17,6 +19,7 @@
     "db:dev": "node --import tsx scripts/prisma-cli.ts migrate dev",
     "db:studio": "node --import tsx scripts/prisma-cli.ts studio",
     "admin:setup": "node --import tsx scripts/setup-local-admin.ts",
+    "admin:provision": "node --import tsx scripts/provision-admin.ts",
     "create-admin": "node --import tsx scripts/create-admin.ts",
     "test:integration": "node --import tsx scripts/test-integration.ts",
     "typecheck": "tsc --noEmit",
@@ -31,6 +34,7 @@
     "test:backup": "node --import tsx scripts/test-backup.ts"
   },
   "dependencies": {
+    "@google/model-viewer": "4.4.0",
     "@next/env": "16.4.2",
     "@prisma/client": "^6.12.0",
     "@upstash/ratelimit": "^2.0.6",
@@ -50,6 +54,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.64.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.18.6",
     "@types/react": "^19.1.13",
